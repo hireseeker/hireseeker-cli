@@ -68,7 +68,8 @@ async function installOne(target: Target, source: string): Promise<InstallResult
     await mkdir(lock); locked = true;
     if (await exists(target.path) && !await owned(target.path)) return { agent: target.agent, path: target.path, status: 'skipped', reason: 'existing_skill_modified_or_unowned' };
     staging = await mkdtemp(join(parent, '.hireseeker-cli-'));
-    await cp(source, staging, { recursive: true, errorOnExist: true, force: false });
+    // mkdtemp уже создал пустой каталог; пользовательские файлы сюда не попадают.
+    await cp(source, staging, { recursive: true, errorOnExist: false, force: false });
     const manifest = { package: 'hireseeker-cli', version: VERSION, hashes: await hashes(staging) };
     await writeFile(join(staging, MARKER), JSON.stringify(manifest));
     if (await exists(target.path)) {

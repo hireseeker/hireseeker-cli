@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, writeFile, rm, lstat, symlink, chmod } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, writeFile, rm, lstat, symlink, chmod, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { load } from './runtime.mjs';
@@ -17,11 +17,12 @@ async function context(t) {
 test('Явный агент создаётся, повторная установка обновляет свой skill', async t => {
   const options = { ...await context(t), agents: ['codex'] };
   const first = await installSkills(options);
-  assert.equal(first.ok, true);
+  assert.equal(first.ok, true, JSON.stringify(first));
   const path = first.agents[0].path;
   assert.match(await readFile(join(path, 'SKILL.md'), 'utf8'), /name: hireseeker/);
   const second = await installSkills(options);
-  assert.equal(second.ok, true); assert.equal(second.agents[0].status, 'installed');
+  assert.equal(second.ok, true, JSON.stringify(second)); assert.equal(second.agents[0].status, 'installed');
+  assert.deepEqual(await readdir(join(options.home, '.codex', 'skills')), ['hireseeker']);
 });
 
 test('Изменённые и дополнительные пользовательские файлы сохраняются', async t => {
