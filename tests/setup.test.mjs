@@ -131,7 +131,6 @@ test('CLI оставляет частичный отчёт в stdout и JSON-о�
   assert.equal(JSON.parse(result.stderr).error.code, 'setup_incomplete');
 });
 
-
 for (const exit of [0, 7]) {
   test(`Глобальный установщик вызывает npm с отдельными аргументами, exit=${exit}`, async t => {
     const { home } = await context(t);
@@ -146,7 +145,6 @@ for (const exit of [0, 7]) {
     assert.deepEqual(JSON.parse(await readFile(argsFile, 'utf8')), ['install', '--global', '--ignore-scripts', '--no-audit', '--no-fund', `hireseeker-cli@${VERSION}`]);
   });
 }
-
 
 test('Отчёт init сохраняет код npm без вывода внешнего текста ошибки', async t => {
   const options = { ...await context(t), agents: ['codex'] };
@@ -166,3 +164,28 @@ test('Текстовый отчёт init объясняет причину и ex
   assert.match(result.stdout, /npm завершился с ошибкой/);
   assert.match(result.stdout, /exit=7/);
 });
+
+for (const kind of ['missing', 'directory', 'empty', 'symlink']) {
+  for (const command of ['skill', 'init']) {
+    test(`${command} отклоняет некорректный источник skill (${kind}) до установки`, async t => {
+      const options = await context(t);
+      const packageRoot = join(options.home, 'package');
+      const source = join(packageRoot, 'skills', 'hireseeker');
+      await mkdir(source, { recursive: true });
+      if (kind === 'directory') await mkdir(join(source, 'SKILL.md'));
+      else if (kind !== 'missing') await writeFile(join(source, 'SKILL.md'), kind === 'empty' ? '' : 'name: hireseeker');
+      if (kind === 'symlink') {
+        const foreign = join(options.home, 'foreign'); await mkdir(foreign);
+        await symlink(foreign, join(source, 'linked'), process.platform === 'win32' ? 'junction' : 'dir');
+      }
+      let npmCalls = 0;
+      const result = await invoke([command, '--agent', 'codex', '--json'], {
+        ...options, packageRoot, npmRunner: async () => { npmCalls++; return true; },
+      });
+      assert.equal(result.code, 1); assert.equal(result.stdout, '');
+      assert.equal(JSON.parse(result.stderr).error.code, kind === 'missing' ? 'skill_missing' : 'skill_invalid');
+      assert.equal(npmCalls, 0, 'Невалидный пакет не должен запускать глобальную установку.');
+      await assert.rejects(lstat(join(options.home, '.codex')), error => error.code === 'ENOENT');
+    });
+  }
+}

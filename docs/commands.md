@@ -46,7 +46,7 @@ CLI не имеет отдельного входа, скрытия компан
 
 При `--json` stderr содержит `{ "error": { "code": "tool_error", "message": "..." } }`. stdout у сетевой ошибки пуст. `init` и `skill` при частичном сбое сохраняют отчёт в stdout и отдельно сообщают `setup_incomplete` в stderr.
 
-Коды CLI: `invalid_arguments`, `invalid_endpoint`, `network_error`, `network_timeout`, `rate_limited`, `tool_error`, `contract_error`, `cancelled`, `skill_missing`, `setup_incomplete`. MCP может сообщать снятую вакансию и истёкший снимок текстом: CLI сохраняет сообщение под `tool_error` и не придумывает отсутствующие серверные коды.
+Коды CLI: `invalid_arguments`, `invalid_endpoint`, `network_error`, `network_timeout`, `rate_limited`, `tool_error`, `contract_error`, `cancelled`, `skill_missing`, `skill_invalid`, `setup_incomplete`. MCP может сообщать снятую вакансию и истёкший снимок текстом: CLI сохраняет сообщение под `tool_error` и не придумывает отсутствующие серверные коды.
 
 Сетевой лимит времени команды — 30 секунд. Автоматических повторов нет. Глобальная установка через npm имеет отдельный лимит 180 секунд. По таймауту или отмене останавливается дерево процессов npm: process group на Linux/macOS и `taskkill /T /F` на Windows. Подтверждение остановки ограничено ещё пятью секундами; если остановку не удалось подтвердить, отчёт содержит `npm_termination_failed`. При сетевой ошибке или 429 выдача не подменяется пустым результатом.
 
@@ -70,3 +70,5 @@ CLI не имеет отдельного входа, скрытия компан
 Причины глобальной установки: `npm_install_timeout`, `npm_not_found`, `npm_spawn_failed`, `npm_install_failed`, `npm_termination_failed`. Поле `global.exit_code` содержит код завершения npm, а `global.system_code` — безопасный код ошибки запуска, например `ENOENT`. Вывод npm не пересылается в отчёт.
 
 Установка skills различает `skill_permission_denied`, `skill_not_directory`, `skill_disk_full`, `skill_read_only`, `skill_missing_path`; неизвестные ошибки остаются под `skill_install_failed`. Текстовый отчёт объясняет причину, JSON сохраняет её код. Ошибка npm не мешает независимой установке skills; отмена останавливает команду.
+
+Источник skill проверяется до установки, для `init` — до запуска npm. `skill_missing` означает отсутствие `SKILL.md`; `skill_invalid` — непригодный или недоступный источник, включая пустой файл, каталог вместо файла и символические ссылки внутри skill. Переустановите CLI из проверенного пакета. Целевые каталоги при этой ошибке не создаются.

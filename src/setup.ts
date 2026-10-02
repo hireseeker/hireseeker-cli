@@ -110,12 +110,26 @@ async function installOne(target: Target, source: string): Promise<InstallResult
   }
 }
 
+/** Проверяем источник до установки: локальный дефект пакета не является сетевой ошибкой. */
+async function prepareSource(options: SetupOptions): Promise<string> {
+  const source = join(options.packageRoot ?? PACKAGE_ROOT, 'skills', 'hireseeker');
+  try {
+    const entry = await lstat(join(source, 'SKILL.md'));
+    if (!entry.isFile() || entry.size === 0) throw new Error('invalid_skill');
+    await hashes(source);
+    return source;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      throw new CliError('skill_missing', 'Пакет не содержит skill. Переустановите CLI.');
+    }
+    throw new CliError('skill_invalid', 'Skill в пакете повреждён или недоступен. Переустановите CLI.');
+  }
+}
+
 export async function installSkills(options: SetupOptions = {}): Promise<{ skill: string; agents: InstallResult[]; ok: boolean }> {
   checkAgents(options.agents);
   const env = options.env ?? process.env;
-  const source = join(options.packageRoot ?? PACKAGE_ROOT, 'skills', 'hireseeker');
-  if (!await exists(join(source, 'SKILL.md'))) throw new CliError('skill_missing', 'Пакет не содержит skill. Переустановите CLI.');
-  await hashes(source);
+  const source = await prepareSource(options);
   const detected: Target[] = [];
   for (const target of targets(env, options.home ?? homedir())) {
     if (options.agents ? options.agents.includes(target.agent) : await exists(target.home)) detected.push(target);
@@ -130,6 +144,7 @@ export async function installSkills(options: SetupOptions = {}): Promise<{ skill
 
 export async function initialize(options: SetupOptions = {}, runner: NpmRunner = installGlobal): Promise<Record<string, unknown>> {
   checkAgents(options.agents);
+  await prepareSource(options);
   let installed = false;
   let failure: NpmInstallError | undefined;
   try { installed = await runner(VERSION, options.env ?? process.env, options.signal); }
