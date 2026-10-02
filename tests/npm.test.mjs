@@ -83,7 +83,13 @@ test('Отменённый до запуска сигнал не запуска�
   await assert.rejects(createNpmRunner()(VERSION, { PATH: '' }, controller.signal), error => error.reason === 'npm_cancelled');
 });
 
-test('Отсутствующий npm возвращает безопасный код запуска', async () => {
-  await assert.rejects(createNpmRunner()(VERSION, { ...process.env, PATH: '' }),
+test('Отсутствующий npm возвращает безопасный код запуска', async t => {
+  const emptyPath = await mkdtemp(join(tmpdir(), 'hireseeker-no-npm-'));
+  t.after(() => rm(emptyPath, { recursive: true, force: true }));
+  // Пустая строка заставляет resolver cross-spawn взять PATH родителя.
+  // На Windows убираем также Path: environment keys нечувствительны к регистру.
+  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => key.toLowerCase() !== 'path'));
+  env.PATH = emptyPath;
+  await assert.rejects(createNpmRunner()(VERSION, env),
     error => error.reason === 'npm_not_found' && error.details.system_code === 'ENOENT');
 });
