@@ -20,20 +20,16 @@ export function renderJob(job: Job): string {
   if (job.contact_access === 'restricted') lines.push('Доступ к контактам можно получить на сайте.');
   if (job.contact_access === 'unavailable') lines.push('Контакты не указаны.');
   lines.push(clean(job.open_url));
-  return lines.join('
-');
+  return lines.join('\n');
 }
 
 export function renderPage(page: Page): string {
-  const result = page.vacancies.length ? page.vacancies.map(renderJob).join('
-
-') : 'На этой странице вакансий нет.';
+  const result = page.vacancies.length ? page.vacancies.map(renderJob).join('\n\n') : 'На этой странице вакансий нет.';
   const lines = [result, '', `На странице: ${page.vacancies.length}. В снимке на ${text(page.searched_at)}: ${page.total_items}.`,
     `Применённые фильтры: ${JSON.stringify(page.applied_filters)}`];
   if (page.next_cursor) lines.push(`Следующая страница: hireseeker vacancy search --cursor "${clean(page.next_cursor)}"`);
   lines.push('Период и сортировка учитывают появление в выбранной категории, включая автоподнятия.');
-  return lines.join('
-');
+  return lines.join('\n');
 }
 
 export function renderCatalog(catalog: Catalog): string {
@@ -42,6 +38,5 @@ export function renderCatalog(catalog: Catalog): string {
     lines.push(`${text(group.code)} · ${text(group.name_ru)}`);
     for (const member of group.members) lines.push(`  ${text(member.code)} · ${text(member.name_ru)}`);
   }
-  return lines.join('
-');
+  return lines.join('\n');
 }

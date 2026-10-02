@@ -18,8 +18,7 @@ export class HireSeekerClient {
     });
     if (result.isError) {
       const content = Array.isArray(result.content) ? result.content : [];
-      const message = content.filter(item => item.type === 'text').map(item => String(item.text)).join('
-');
+      const message = content.filter(item => item.type === 'text').map(item => String(item.text)).join('\n');
       throw new CliError('tool_error', clean(message).slice(0, 2000) || 'Сервис не выполнил запрос.');
     }
     const parsed = schema.safeParse(result.structuredContent);
