@@ -141,6 +141,7 @@ export async function run(argv: string[], dependencies: Dependencies = {}): Prom
   try {
     if (argv.length <= 2) { program.outputHelp(); return 0; }
     await program.parseAsync(argv);
+    if (dependencies.signal?.aborted) throw new CliError('cancelled', 'Операция отменена.', dependencies.signal.reason === 143 ? 143 : 130);
     return exitCode;
   } catch (error) {
     const normalized = normalizeError(error, dependencies.signal);

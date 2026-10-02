@@ -8,7 +8,7 @@ export class CliError extends Error {
 /** Убирает управляющие последовательности из внешних данных для терминала. */
 export function clean(value: unknown): string {
   // Удаляем целые ANSI/OSC-последовательности до удаления одиночных control chars.
-  return String(value ?? '').replace(/\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g, '')
+  return String(value ?? '').replace(/\x1b][^\x07\x1b]*(?:\x07|\x1b\\)/g, '')
     .replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, '')
     .replace(/[\x00-\x08\x0b-\x1f\x7f-\x9f]/g, '');
 }

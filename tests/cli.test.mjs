@@ -90,7 +90,7 @@ test('Текстовая выдача сообщает об обрезке и п
   const result = await invoke(['vacancy', 'search', '--category', 'backend'], { url: fixture.url });
   assert.equal(result.code, 0, result.stderr);
   assert.match(result.stdout, /1500 USD/); assert.match(result.stdout, /Описание обрезано/);
-  assert.match(result.stdout, /Контакты доступны/); assert.match(result.stdout, /Применённые фильтры/);
+  assert.match(result.stdout, /Доступ к контактам/); assert.match(result.stdout, /Применённые фильтры/);
   assert.match(result.stdout, /--cursor/); assert.match(result.stdout, /В снимке/);
   assert.equal(toolCalls(fixture, 'get_vacancy').length, 0);
 });
@@ -116,4 +116,14 @@ test('Недоступная сеть — ошибка, без пустой ус
   const result = await invoke(['professions', 'list', '--json']);
   assert.equal(result.code, 1); assert.equal(result.stdout, '');
   assert.equal(JSON.parse(result.stderr).error.code, 'network_error');
+});
+
+
+test('HTTP 429 возвращает rate_limited и не повторяет поиск', async t => {
+  const fixture = await server(({ name }) => name === 'search_vacancies' ? '429' : undefined);
+  t.after(() => fixture.close());
+  const result = await invoke(['vacancy', 'search', '--cursor', cursor, '--json'], { url: fixture.url });
+  assert.equal(result.code, 1); assert.equal(result.stdout, '');
+  assert.equal(JSON.parse(result.stderr).error.code, 'rate_limited');
+  assert.equal(toolCalls(fixture, 'search_vacancies').length, 1);
 });

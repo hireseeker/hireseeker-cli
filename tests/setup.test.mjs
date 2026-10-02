@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, writeFile, rm, lstat, symlink } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, writeFile, rm, lstat, symlink, chmod } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { load } from './runtime.mjs';
 import { invoke } from './helpers.mjs';
-const { installSkills, initialize, targets } = await load('setup');
+const { installSkills, initialize, targets, installGlobal } = await load('setup');
 const { VERSION } = await load('config');
 
 async function context(t) {
@@ -126,3 +126,24 @@ test('CLI оставляет частичный отчёт в stdout и JSON-о�
   assert.equal(result.code, 1); assert.equal(JSON.parse(result.stdout).agents[0].status, 'installed');
   assert.equal(JSON.parse(result.stderr).error.code, 'setup_incomplete');
 });
+
+
+for (const exit of [0, 7]) {
+  test(`Глобальный установщик вызывает npm с отдельными аргументами, exit=${exit}`, async t => {
+    const { home } = await context(t);
+    const { delimiter } = await import('node:path');
+    const { pathToFileURL } = await import('node:url');
+    const script = join(home, 'fake-npm.mjs');
+    const argsFile = join(home, 'args.json');
+    await writeFile(script, `import { writeFileSync } from 'node:fs'; writeFileSync(process.env.HIRESEEKER_TEST_NPM_ARGS, JSON.stringify(process.argv.slice(2))); process.exitCode = ${exit};`);
+    const npm = join(home, process.platform === 'win32' ? 'npm.cmd' : 'npm');
+    await writeFile(npm, process.platform === 'win32'
+      ? `@echo off\r\n"${process.execPath}" "${script}" %*\r\n`
+      : `#!/usr/bin/env node\nimport(${JSON.stringify(pathToFileURL(script).href)});\n`);
+    if (process.platform !== 'win32') await chmod(npm, 0o755);
+    const env = { ...process.env, PATH: `${home}${delimiter}${process.env.PATH}`, HIRESEEKER_TEST_NPM_ARGS: argsFile };
+    const result = await installGlobal(VERSION, env);
+    assert.equal(result, exit === 0);
+    assert.deepEqual(JSON.parse(await readFile(argsFile, 'utf8')), ['install', '--global', '--ignore-scripts', '--no-audit', '--no-fund', `hireseeker-cli@${VERSION}`]);
+  });
+}

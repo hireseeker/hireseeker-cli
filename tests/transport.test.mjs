@@ -33,3 +33,24 @@ test('Endpoint принимает HTTPS и loopback HTTP', () => {
     assert.equal(endpoint({ HIRESEEKER_MCP_URL: url }).href, url);
   }
 });
+
+
+test('Исполняемая команда обрабатывает настоящий SIGTERM и закрывает запрос', { skip: process.platform === 'win32', timeout: 10000 }, async t => {
+  const { spawn } = await import('node:child_process');
+  const { join } = await import('node:path');
+  const { runtimeRoot } = await import('./runtime.mjs');
+  let notify;
+  const ready = new Promise(resolve => { notify = resolve; });
+  const fixture = await server(({ name }) => { if (name === 'get_professions') { notify(); return 'hang'; } });
+  t.after(() => fixture.close());
+  const child = spawn(process.execPath, [join(runtimeRoot, 'bin', 'hireseeker.js'), 'professions', 'list', '--json'], {
+    env: { ...process.env, HIRESEEKER_MCP_URL: fixture.url }, stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  t.after(() => { if (child.exitCode === null) child.kill('SIGKILL'); });
+  let stdout = '', stderr = '';
+  child.stdout.on('data', value => { stdout += value; }); child.stderr.on('data', value => { stderr += value; });
+  const exited = new Promise((resolve, reject) => { child.once('close', code => resolve(code)); child.once('error', reject); });
+  await Promise.race([ready, exited.then(() => { throw new Error('CLI завершился до начала запроса.'); })]);
+  child.kill('SIGTERM');
+  assert.equal(await exited, 143); assert.equal(stdout, ''); assert.equal(JSON.parse(stderr).error.code, 'cancelled');
+});

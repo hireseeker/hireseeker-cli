@@ -56,6 +56,7 @@ export async function server(handler) {
     else if (message.method === 'tools/call') {
       const custom = handler ? await handler(message.params) : undefined;
       if (custom === 'hang') return;
+      if (custom === '429') { res.writeHead(429, { 'Content-Type': 'application/json', 'Retry-After': '30' }); res.end(JSON.stringify({ error: 'rate_limited' })); return; }
       if (custom !== undefined) result = custom;
       else {
         const { name, arguments: args } = message.params;

@@ -17,7 +17,7 @@ export function renderJob(job: Job): string {
     text(job.description),
   ];
   if (job.description_truncated) lines.push(`Описание обрезано. Подробности: hireseeker vacancy read ${job.id}`);
-  if (job.contact_access === 'restricted') lines.push('Контакты доступны после входа или получения доступа на сайте.');
+  if (job.contact_access === 'restricted') lines.push('Доступ к контактам можно получить на сайте.');
   if (job.contact_access === 'unavailable') lines.push('Контакты не указаны.');
   lines.push(clean(job.open_url));
   return lines.join('

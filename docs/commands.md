@@ -46,7 +46,7 @@ CLI не имеет отдельного входа, скрытия компан
 
 При `--json` stderr содержит `{ "error": { "code": "tool_error", "message": "..." } }`. stdout у сетевой ошибки пуст. `init` и `skill` при частичном сбое сохраняют отчёт в stdout и отдельно сообщают `setup_incomplete` в stderr.
 
-Коды CLI: `invalid_arguments`, `invalid_endpoint`, `network_error`, `network_timeout`, `tool_error`, `contract_error`, `cancelled`, `skill_missing`, `setup_incomplete`. MCP может сообщать снятую вакансию и истёкший снимок текстом: CLI сохраняет сообщение под `tool_error` и не придумывает отсутствующие серверные коды.
+Коды CLI: `invalid_arguments`, `invalid_endpoint`, `network_error`, `network_timeout`, `rate_limited`, `tool_error`, `contract_error`, `cancelled`, `skill_missing`, `setup_incomplete`. MCP может сообщать снятую вакансию и истёкший снимок текстом: CLI сохраняет сообщение под `tool_error` и не придумывает отсутствующие серверные коды.
 
 Сетевой лимит времени команды — 30 секунд. Автоматических повторов нет. Глобальная установка через npm имеет отдельный лимит 180 секунд. При сетевой ошибке или 429 выдача не подменяется пустым результатом.
 
