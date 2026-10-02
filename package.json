@@ -16,7 +16,8 @@
     "skills/",
     "README.md",
     "docs/",
-    "LICENSE"
+    "LICENSE",
+    "npm-shrinkwrap.json"
   ],
   "repository": {
     "type": "git",
