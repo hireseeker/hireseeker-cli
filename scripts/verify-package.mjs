@@ -1,17 +1,15 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
 import { mkdtempSync, readFileSync, rmSync, appendFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import spawn from 'cross-spawn';
+import { checkArtifact } from './check-artifact.mjs';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-const receipt = JSON.parse(readFileSync(join(root, '.artifacts', 'receipt.json'), 'utf8'));
-const tarball = join(root, '.artifacts', receipt.filename);
-assert.equal(createHash('sha256').update(readFileSync(tarball)).digest('hex'), receipt.sha256);
 const head = spawn.sync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' });
-assert.equal(head.stdout.trim(), receipt.commit);
+assert.equal(head.status, 0, 'Не удалось определить SHA checkout.');
+const { receipt, tarball } = checkArtifact(join(root, '.artifacts'), head.stdout.trim());
 const temp = mkdtempSync(join(tmpdir(), 'hireseeker-package-'));
 const execute = (command, args, env = process.env) => {
   const result = spawn.sync(command, args, { cwd: temp, env, encoding: 'utf8', timeout: 180000, maxBuffer: 4 * 1024 * 1024 });
