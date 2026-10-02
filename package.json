@@ -1,0 +1,62 @@
+{
+  "name": "hireseeker-cli",
+  "version": "0.1.0",
+  "description": "Поиск вакансий HireSeeker из терминала и AI-агентов",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "hireseeker": "bin/hireseeker.js"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "files": [
+    "bin/",
+    "dist/",
+    "skills/",
+    "README.md",
+    "docs/",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hireseeker/hireseeker-cli.git"
+  },
+  "homepage": "https://hireseeker.ru",
+  "bugs": {
+    "url": "https://github.com/hireseeker/hireseeker-cli/issues"
+  },
+  "keywords": [
+    "hireseeker",
+    "cli",
+    "jobs",
+    "job-search",
+    "ai-agent",
+    "mcp"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "node scripts/test.mjs",
+    "check": "npm run lint && npm run typecheck && npm run build && npm test",
+    "prepack": "npm run build",
+    "prepublishOnly": "npm run check",
+    "test:package": "node scripts/verify-package.mjs",
+    "smoke:live": "node scripts/live-smoke.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.32.0",
+    "commander": "15.0.0",
+    "cross-spawn": "7.0.6",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@types/cross-spawn": "6.0.6",
+    "@types/node": "^22.0.0",
+    "eslint": "10.12.0",
+    "typescript": "5.9.3",
+    "typescript-eslint": "^8.0.0"
+  }
+}
