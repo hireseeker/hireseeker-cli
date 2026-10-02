@@ -101,7 +101,8 @@ async function installOne(target: Target, source: string): Promise<InstallResult
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code;
     const reasons: Record<string, string> = { EACCES: 'skill_permission_denied', EPERM: 'skill_permission_denied', ENOTDIR: 'skill_not_directory', ENOSPC: 'skill_disk_full', EROFS: 'skill_read_only', ENOENT: 'skill_missing_path' };
-    const reason = code === 'EEXIST' && lockAttempted && !locked ? 'installation_locked' : reasons[code ?? ''] ?? 'skill_install_failed';
+    const reason = code === 'EEXIST' && !lockAttempted ? 'skill_not_directory'
+      : code === 'EEXIST' && !locked ? 'installation_locked' : reasons[code ?? ''] ?? 'skill_install_failed';
     return { agent: target.agent, path: target.path, status: 'failed', reason };
   } finally {
     if (staging) await rm(staging, { recursive: true, force: true }).catch(() => undefined);
