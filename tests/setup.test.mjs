@@ -7,6 +7,7 @@ import { load } from './runtime.mjs';
 import { invoke } from './helpers.mjs';
 const { installSkills, initialize, targets, installGlobal } = await load('setup');
 const { VERSION } = await load('config');
+const { NpmInstallError } = await load('npm');
 
 async function context(t) {
   const home = await mkdtemp(join(tmpdir(), 'hireseeker-test-'));
@@ -92,6 +93,7 @@ test('Частичный сбой не мешает установке для д
   await mkdir(join(options.home, '.cursor')); await writeFile(join(options.home, '.cursor', 'skills'), 'blocked');
   const result = await installSkills({ ...options, agents: ['codex', 'cursor'] });
   assert.equal(result.ok, false); assert.equal(result.agents[0].status, 'installed'); assert.equal(result.agents[1].status, 'failed');
+  assert.equal(result.agents[1].reason, 'skill_not_directory');
 });
 
 test('Занятая блокировка сохраняется и не удаляет существующие файлы', async t => {
@@ -143,8 +145,28 @@ for (const exit of [0, 7]) {
       : `#!/usr/bin/env node\nimport(${JSON.stringify(pathToFileURL(script).href)});\n`);
     if (process.platform !== 'win32') await chmod(npm, 0o755);
     const env = { ...process.env, PATH: `${home}${delimiter}${process.env.PATH}`, HIRESEEKER_TEST_NPM_ARGS: argsFile };
-    const result = await installGlobal(VERSION, env);
-    assert.equal(result, exit === 0);
+    if (exit === 0) assert.equal(await installGlobal(VERSION, env), true);
+    else await assert.rejects(installGlobal(VERSION, env), error => error.reason === 'npm_install_failed' && error.details.exit_code === exit);
     assert.deepEqual(JSON.parse(await readFile(argsFile, 'utf8')), ['install', '--global', '--ignore-scripts', '--no-audit', '--no-fund', `hireseeker-cli@${VERSION}`]);
   });
 }
+
+
+test('Отчёт init сохраняет код npm без вывода внешнего текста ошибки', async t => {
+  const options = { ...await context(t), agents: ['codex'] };
+  const result = await initialize(options, async () => { throw new NpmInstallError('npm_install_failed', { exit_code: 7 }); });
+  assert.deepEqual(result.global, { installed: false, reason: 'npm_install_failed', exit_code: 7 });
+  assert.equal(result.agents[0].status, 'installed');
+  const unexpected = await initialize(options, async () => { throw new Error('https://user:private-secret@example.com'); });
+  assert.equal(unexpected.global.reason, 'npm_install_failed');
+  assert.doesNotMatch(JSON.stringify(unexpected), /private-secret/);
+});
+
+test('Текстовый отчёт init объясняет причину и exit code npm', async t => {
+  const result = await invoke(['init', '--agent', 'codex'], { ...await context(t), npmRunner: async () => {
+    throw new NpmInstallError('npm_install_failed', { exit_code: 7 });
+  } });
+  assert.equal(result.code, 1);
+  assert.match(result.stdout, /npm завершился с ошибкой/);
+  assert.match(result.stdout, /exit=7/);
+});

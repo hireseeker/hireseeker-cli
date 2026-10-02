@@ -11,13 +11,14 @@ npm ci --ignore-scripts
 CI запускает:
 
 ```bash
+npm run syntax
 npm run lint
 npm run typecheck
 npm run build
 npm test
 ```
 
-Полные локальные прогоны и build не нужны агенту: используйте CI по текущему SHA. Тесты работают с loopback MCP-сервером и временными HOME, не требуют production, npm login или установленного AI-агента.
+Локально разрешена лёгкая `npm run syntax`: она проверяет только синтаксис исходников TypeScript, не запускает typecheck или build. Полные локальные прогоны и build не нужны агенту: используйте CI по текущему SHA. Тесты работают с loopback MCP-сервером и временными HOME, не требуют production, npm login или установленного AI-агента.
 
 Для тестового сервера установите `HIRESEEKER_MCP_URL=http://127.0.0.1:PORT/mcp`. Production smoke выполняется отдельно по запросу или перед доставкой:
 

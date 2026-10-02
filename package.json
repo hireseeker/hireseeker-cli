@@ -40,11 +40,12 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "node scripts/test.mjs",
-    "check": "npm run lint && npm run typecheck && npm run build && npm test",
+    "check": "npm run syntax && npm run lint && npm run typecheck && npm run build && npm test",
     "prepack": "npm run build",
     "prepublishOnly": "npm run check",
     "test:package": "node scripts/verify-package.mjs",
-    "smoke:live": "node scripts/live-smoke.mjs"
+    "smoke:live": "node scripts/live-smoke.mjs",
+    "syntax": "node scripts/check-syntax.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.0",

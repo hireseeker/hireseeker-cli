@@ -5,7 +5,7 @@ import { buildCriteria, checkSearchOptions, csv, integer, searchSchema, type Sea
 import { withClient, type HireSeekerClient } from './mcp.js';
 import { renderCatalog, renderJob, renderPage, text } from './output.js';
 import { catalogSchema, jobSchema, locationsSchema, pageSchema } from './schemas.js';
-import { initialize, installSkills, checkAgents, type NpmRunner, type InstallResult } from './setup.js';
+import { initialize, installSkills, checkAgents, setupReason, type NpmRunner, type InstallResult } from './setup.js';
 
 type Dependencies = {
   env?: NodeJS.ProcessEnv; signal?: AbortSignal; home?: string; packageRoot?: string;
@@ -14,13 +14,16 @@ type Dependencies = {
 
 function setupText(result: Record<string, unknown>): string {
   const lines: string[] = [];
-  const global = result.global as { installed: boolean } | undefined;
-  if (global) lines.push(global.installed ? `CLI ${VERSION} установлен глобально.` : 'Глобальная установка не выполнена. До публикации используйте npm-tarball; после публикации доступен npx.');
+  const global = result.global as { installed: boolean; reason?: string; exit_code?: number; system_code?: string } | undefined;
+  if (global) {
+    const detail = global.exit_code === undefined ? global.system_code ?? '' : `exit=${global.exit_code}`;
+    lines.push(global.installed ? `CLI ${VERSION} установлен глобально.` : `Глобальная установка не выполнена: ${setupReason(global.reason ?? 'npm_install_failed')}${detail ? ` (${detail})` : ''}. До публикации используйте npm-tarball; после публикации доступен npx.`);
+  }
   const agents = result.agents as InstallResult[];
   if (!agents.length) lines.push('Поддерживаемые агенты не обнаружены. Укажите skill --agent codex (или другого агента).');
   for (const agent of agents) {
     const status = agent.status === 'installed' ? 'установлен' : agent.status === 'skipped' ? 'сохранён существующий skill' : 'установка не выполнена';
-    lines.push(`${agent.agent}: ${status}${agent.reason ? ` (${agent.reason})` : ''}. ${clean(agent.path)}`);
+    lines.push(`${agent.agent}: ${status}${agent.reason ? ` (${setupReason(agent.reason)})` : ''}. ${clean(agent.path)}`);
   }
   return lines.join('\n');
 }

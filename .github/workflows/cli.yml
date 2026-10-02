@@ -20,6 +20,7 @@ jobs:
           cache: npm
           cache-dependency-path: npm-shrinkwrap.json
       - run: npm ci --ignore-scripts
+      - run: npm run syntax
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run build

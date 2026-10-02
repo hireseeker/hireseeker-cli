@@ -2,9 +2,10 @@ import { createHash } from 'node:crypto';
 import { cp, lstat, mkdir, mkdtemp, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import spawn from 'cross-spawn';
 import { CliError } from './errors.js';
 import { PACKAGE_ROOT, VERSION } from './config.js';
+import { installGlobal, NpmInstallError, type NpmRunner } from './npm.js';
+export { installGlobal, type NpmRunner } from './npm.js';
 
 const MARKER = '.hireseeker-cli-install.json';
 export const AGENTS = ['claude', 'codex', 'cursor', 'opencode', 'gemini', 'antigravity'] as const;
@@ -12,6 +13,22 @@ type AgentName = typeof AGENTS[number];
 type Target = { agent: AgentName; home: string; path: string };
 export type InstallResult = { agent: AgentName; path: string; status: 'installed' | 'skipped' | 'failed'; reason?: string };
 export type SetupOptions = { env?: NodeJS.ProcessEnv; home?: string; packageRoot?: string; agents?: string[]; signal?: AbortSignal };
+
+export function setupReason(reason: string): string {
+  const messages: Record<string, string> = {
+    npm_install_failed: 'npm завершился с ошибкой; проверьте доступ к registry и права на глобальную установку',
+    npm_not_found: 'npm не найден в PATH; установите Node.js с npm',
+    npm_spawn_failed: 'не удалось запустить npm; проверьте PATH и права на executable',
+    npm_install_timeout: 'превышен лимит времени; дерево процессов npm принудительно остановлено',
+    npm_termination_failed: 'не удалось подтвердить остановку дерева npm; проверьте процессы перед повтором',
+    skill_permission_denied: 'нет прав на каталог skill', skill_not_directory: 'один из компонентов пути не является каталогом',
+    skill_disk_full: 'на диске нет свободного места', skill_read_only: 'каталог находится на диске только для чтения',
+    skill_missing_path: 'не найден файл или каталог для установки', skill_install_failed: 'не удалось установить skill',
+    installation_locked: 'каталог установки заблокирован другим запуском',
+    existing_skill_modified_or_unowned: 'существующий skill сохранён: он изменён или установлен другим способом',
+  };
+  return messages[reason] ?? reason;
+}
 
 export function targets(env: NodeJS.ProcessEnv, home: string): Target[] {
   const config = env.XDG_CONFIG_HOME || join(home, '.config');
@@ -83,7 +100,9 @@ async function installOne(target: Target, source: string): Promise<InstallResult
     return { agent: target.agent, path: target.path, status: 'installed' };
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code;
-    return { agent: target.agent, path: target.path, status: 'failed', reason: code === 'EEXIST' && lockAttempted && !locked ? 'installation_locked' : 'skill_install_failed' };
+    const reasons: Record<string, string> = { EACCES: 'skill_permission_denied', EPERM: 'skill_permission_denied', ENOTDIR: 'skill_not_directory', ENOSPC: 'skill_disk_full', EROFS: 'skill_read_only', ENOENT: 'skill_missing_path' };
+    const reason = code === 'EEXIST' && lockAttempted && !locked ? 'installation_locked' : reasons[code ?? ''] ?? 'skill_install_failed';
+    return { agent: target.agent, path: target.path, status: 'failed', reason };
   } finally {
     if (staging) await rm(staging, { recursive: true, force: true }).catch(() => undefined);
     if (locked) await rm(lock, { recursive: true, force: true }).catch(() => undefined);
@@ -108,21 +127,16 @@ export async function installSkills(options: SetupOptions = {}): Promise<{ skill
   return { skill: 'hireseeker', agents: results, ok: results.length > 0 && results.every(result => result.status === 'installed') };
 }
 
-export type NpmRunner = (version: string, env: NodeJS.ProcessEnv, signal?: AbortSignal) => Promise<boolean>;
-export const installGlobal: NpmRunner = (version, env, signal) => new Promise((resolve, reject) => {
-  const child = spawn('npm', ['install', '--global', '--ignore-scripts', '--no-audit', '--no-fund', `hireseeker-cli@${version}`], { env, stdio: 'ignore', signal });
-  const timer = setTimeout(() => child.kill(), 180_000);
-  timer.unref();
-  child.once('error', error => { clearTimeout(timer); reject(error); });
-  child.once('close', code => { clearTimeout(timer); resolve(code === 0); });
-});
-
 export async function initialize(options: SetupOptions = {}, runner: NpmRunner = installGlobal): Promise<Record<string, unknown>> {
   checkAgents(options.agents);
   let installed = false;
+  let failure: NpmInstallError | undefined;
   try { installed = await runner(VERSION, options.env ?? process.env, options.signal); }
-  catch { if (options.signal?.aborted) throw new CliError('cancelled', 'Установка отменена.', options.signal.reason === 143 ? 143 : 130); }
+  catch (error) {
+    if (options.signal?.aborted) throw new CliError('cancelled', 'Установка отменена.', options.signal.reason === 143 ? 143 : 130);
+    if (error instanceof NpmInstallError) failure = error;
+  }
   if (options.signal?.aborted) throw new CliError('cancelled', 'Установка отменена.', options.signal.reason === 143 ? 143 : 130);
   const skills = await installSkills(options);
-  return { version: VERSION, global: { installed, reason: installed ? null : 'npm_install_failed' }, ...skills, ok: installed && skills.ok };
+  return { version: VERSION, global: { installed, reason: installed ? null : failure?.reason ?? 'npm_install_failed', ...failure?.details }, ...skills, ok: installed && skills.ok };
 }
