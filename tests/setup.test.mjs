@@ -1,10 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, writeFile, rm, lstat, symlink, chmod, readdir } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, writeFile, rm, lstat, symlink, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { load } from './runtime.mjs';
 import { invoke } from './helpers.mjs';
+import { writeNpmExecutable } from './npm-fixture.mjs';
 const { installSkills, initialize, targets, installGlobal } = await load('setup');
 const { VERSION } = await load('config');
 const { NpmInstallError } = await load('npm');
@@ -135,15 +136,10 @@ for (const exit of [0, 7]) {
   test(`Глобальный установщик вызывает npm с отдельными аргументами, exit=${exit}`, async t => {
     const { home } = await context(t);
     const { delimiter } = await import('node:path');
-    const { pathToFileURL } = await import('node:url');
     const script = join(home, 'fake-npm.mjs');
     const argsFile = join(home, 'args.json');
     await writeFile(script, `import { writeFileSync } from 'node:fs'; writeFileSync(process.env.HIRESEEKER_TEST_NPM_ARGS, JSON.stringify(process.argv.slice(2))); process.exitCode = ${exit};`);
-    const npm = join(home, process.platform === 'win32' ? 'npm.cmd' : 'npm');
-    await writeFile(npm, process.platform === 'win32'
-      ? `@echo off\r\n"${process.execPath}" "${script}" %*\r\n`
-      : `#!/usr/bin/env node\nimport(${JSON.stringify(pathToFileURL(script).href)});\n`);
-    if (process.platform !== 'win32') await chmod(npm, 0o755);
+    await writeNpmExecutable(home, script);
     const env = { ...process.env, PATH: `${home}${delimiter}${process.env.PATH}`, HIRESEEKER_TEST_NPM_ARGS: argsFile };
     if (exit === 0) assert.equal(await installGlobal(VERSION, env), true);
     else await assert.rejects(installGlobal(VERSION, env), error => error.reason === 'npm_install_failed' && error.details.exit_code === exit);

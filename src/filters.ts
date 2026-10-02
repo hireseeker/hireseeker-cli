@@ -1,5 +1,6 @@
 import type { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { InvalidArgumentError } from 'commander';
+import { z } from 'zod';
 import type { Catalog, Criteria } from './schemas.js';
 import { CliError } from './errors.js';
 
@@ -31,11 +32,21 @@ export function checkSearchOptions(options: SearchOptions): void {
 }
 
 type Property = { enum?: unknown[]; maxItems?: number; minimum?: number; maximum?: number; items?: Property };
+const propertySchema = z.looseObject({
+  enum: z.array(z.unknown()).optional(), maxItems: z.number().int().nonnegative().optional(),
+  minimum: z.number().optional(), maximum: z.number().optional(),
+  items: z.looseObject({ enum: z.array(z.unknown()).optional() }).optional(),
+});
+const definitionSchema = z.looseObject({ properties: z.record(z.string(), propertySchema) });
+const requiredProperties = ['limit', 'salary_buckets', 'country_filter', 'schedule_filter', 'city_filter', 'source_filter'];
 export function searchSchema(tools: Tool[]): Record<string, unknown> {
   const tool = tools.find(item => item.name === 'search_vacancies');
   const defs = tool?.inputSchema.$defs as Record<string, unknown> | undefined;
   const schema = defs?.SearchCriteria;
-  if (!schema || typeof schema !== 'object') throw new CliError('contract_error', 'Сервис не объявляет схему фильтров поиска.');
+  const parsed = definitionSchema.safeParse(schema);
+  if (!parsed.success || requiredProperties.some(key => !parsed.data.properties[key])) {
+    throw new CliError('contract_error', 'Сервис не объявляет корректную схему фильтров поиска.');
+  }
   return schema as Record<string, unknown>;
 }
 

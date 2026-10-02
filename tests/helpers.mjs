@@ -41,7 +41,7 @@ export const tools = ['get_professions', 'search_locations', 'search_vacancies',
 }));
 const response = value => ({ content: [{ type: 'text', text: JSON.stringify(value) }], structuredContent: value });
 
-export async function server(handler) {
+export async function server(handler, advertisedTools = tools) {
   const calls = [];
   const http = createServer(async (req, res) => {
     if (req.method !== 'POST') { res.writeHead(405); res.end(); return; }
@@ -52,7 +52,7 @@ export async function server(handler) {
     if (message.id === undefined) { res.writeHead(202); res.end(); return; }
     let result;
     if (message.method === 'initialize') result = { protocolVersion: message.params.protocolVersion, capabilities: { tools: {} }, serverInfo: { name: 'fixture', version: '1.0.0' } };
-    else if (message.method === 'tools/list') result = { tools };
+    else if (message.method === 'tools/list') result = { tools: advertisedTools };
     else if (message.method === 'tools/call') {
       const custom = handler ? await handler(message.params) : undefined;
       if (custom === 'hang') return;

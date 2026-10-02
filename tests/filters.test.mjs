@@ -27,3 +27,15 @@ test('ID не округляется и не принимает частично
   for (const value of ['1e3', '9007199254740993', '-1', '2.5', '7days']) assert.throws(() => integer(value));
   assert.equal(integer('101'), 101);
 });
+
+for (const definition of [{}, { properties: [] }, { properties: { limit: {} } },
+  { ...tools.find(tool => tool.name === 'search_vacancies').inputSchema.$defs.SearchCriteria,
+    properties: { ...tools.find(tool => tool.name === 'search_vacancies').inputSchema.$defs.SearchCriteria.properties,
+      limit: { minimum: 'invalid' } } },
+]) {
+  test('Повреждённая серверная схема возвращает contract_error', () => {
+    const changed = structuredClone(tools);
+    changed.find(tool => tool.name === 'search_vacancies').inputSchema.$defs.SearchCriteria = definition;
+    assert.throws(() => buildCriteria({ category: 'python_backend' }, catalog, changed), error => error.code === 'contract_error');
+  });
+}

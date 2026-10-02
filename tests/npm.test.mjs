@@ -1,11 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, writeFile, readFile, rm, chmod } from 'node:fs/promises';
+import { mkdtemp, writeFile, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, delimiter } from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 import { load } from './runtime.mjs';
+import { writeNpmExecutable } from './npm-fixture.mjs';
 const { createNpmRunner } = await load('npm');
 const { initialize } = await load('setup');
 const { VERSION } = await load('config');
@@ -24,11 +24,7 @@ async function hangingNpm(t) {
     const child = spawn(process.execPath, [${JSON.stringify(descendant)}], { stdio: 'ignore' });
     writeFileSync(process.env.HIRESEEKER_TEST_READY, JSON.stringify([process.pid, child.pid]));
     setInterval(() => {}, 1000);`);
-  const npm = join(home, process.platform === 'win32' ? 'npm.cmd' : 'npm');
-  await writeFile(npm, process.platform === 'win32'
-    ? `@echo off\r\n"${process.execPath}" "${script}" %*\r\n`
-    : `#!/usr/bin/env node\nimport(${JSON.stringify(pathToFileURL(script).href)});\n`);
-  if (process.platform !== 'win32') await chmod(npm, 0o755);
+  await writeNpmExecutable(home, script);
   t.after(async () => {
     try {
       for (const pid of JSON.parse(await readFile(ready, 'utf8'))) {
@@ -92,4 +88,18 @@ test('Отсутствующий npm возвращает безопасный �
   env.PATH = emptyPath;
   await assert.rejects(createNpmRunner()(VERSION, env),
     error => error.reason === 'npm_not_found' && error.details.system_code === 'ENOENT');
+});
+
+test('Отказ taskkill сообщается без обещания остановленного дерева', { skip: process.platform !== 'win32', timeout: 12000 }, async t => {
+  const fixture = await hangingNpm(t);
+  await writeFile(join(fixture.home, 'taskkill.cmd'), '@echo off\r\nexit /b 7\r\n');
+  const previousPath = process.env.PATH;
+  process.env.PATH = `${fixture.home}${delimiter}${previousPath}`;
+  t.after(() => { process.env.PATH = previousPath; });
+  const controller = new AbortController();
+  const pending = createNpmRunner(10000)(VERSION, fixture.env, controller.signal);
+  const rejected = assert.rejects(pending, error => error.reason === 'npm_termination_failed');
+  await readyTree(fixture);
+  controller.abort();
+  await rejected;
 });

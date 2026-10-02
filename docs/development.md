@@ -6,7 +6,7 @@
 npm ci --ignore-scripts
 ```
 
-Основные модули: `src/cli.ts` — команды; `src/mcp.ts` — транспорт; `src/filters.ts` — аргументы поиска; `src/output.ts` — текстовая выдача; `src/setup.ts` — установка. Схемы `src/schemas.ts` проверяют ответы без удаления дополнительных JSON-полей.
+Основные модули: `src/cli.ts` — команды; `src/mcp.ts` — транспорт; `src/filters.ts` — аргументы поиска; `src/output.ts` — текстовая выдача; `src/setup.ts` — установка skills; `src/npm.ts` — запуск и завершение дерева npm. Схемы `src/schemas.ts` проверяют ответы без удаления дополнительных JSON-полей.
 
 CI запускает:
 
@@ -25,6 +25,14 @@ npm test
 ```bash
 npm run smoke:live
 ```
+
+Для проверки скачанного CI-артефакта установите его в отдельный npm prefix и передайте путь к его executable:
+
+```bash
+node scripts/live-smoke.mjs /path/to/installed/hireseeker-cli/bin/hireseeker.js
+```
+
+Без аргумента smoke использует `bin/hireseeker.js` текущего checkout и требует готовый `dist/`. Перед выпуском проверяйте выбранный tarball из зелёного CI и сверяйте его `receipt.json`, как описано в [документации выпуска](release.md).
 
 Smoke читает каталог, географию, поиск, следующую страницу и карточку. Он не устанавливает skills и не изменяет пользовательские настройки на сайте; поисковый снимок создаётся в краткоживущем серверном кеше.
 

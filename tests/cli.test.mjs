@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { invoke, server, toolCalls, cursor, job, page } from './helpers.mjs';
+import { invoke, server, toolCalls, cursor, job, page, tools } from './helpers.mjs';
 
 for (const args of [['--help'], ['--version'], ['vacancy', 'search', '--help']]) {
   test(`Работа без сети: ${args.join(' ')}`, async () => {
@@ -118,7 +118,6 @@ test('Недоступная сеть — ошибка, без пустой ус
   assert.equal(JSON.parse(result.stderr).error.code, 'network_error');
 });
 
-
 test('HTTP 429 возвращает rate_limited и не повторяет поиск', async t => {
   const fixture = await server(({ name }) => name === 'search_vacancies' ? '429' : undefined);
   t.after(() => fixture.close());
@@ -127,3 +126,15 @@ test('HTTP 429 возвращает rate_limited и не повторяет по
   assert.equal(JSON.parse(result.stderr).error.code, 'rate_limited');
   assert.equal(toolCalls(fixture, 'search_vacancies').length, 1);
 });
+
+for (const args of [['vacancy', 'search', '--category', 'python_backend'], ['filters', 'guide']]) {
+  test('Повреждённая схема фильтров даёт contract_error в CLI до поиска', async t => {
+    const changed = structuredClone(tools);
+    changed.find(tool => tool.name === 'search_vacancies').inputSchema.$defs.SearchCriteria = {};
+    const fixture = await server(undefined, changed); t.after(() => fixture.close());
+    const result = await invoke([...args, '--json'], { url: fixture.url });
+    assert.equal(result.code, 1); assert.equal(result.stdout, '');
+    assert.equal(JSON.parse(result.stderr).error.code, 'contract_error');
+    assert.equal(toolCalls(fixture, 'search_vacancies').length, 0);
+  });
+}
