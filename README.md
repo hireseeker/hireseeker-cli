@@ -1,6 +1,6 @@
 # HireSeeker CLI
 
-Поиск вакансий на [hireseeker.ru](https://hireseeker.ru) из терминала, IDE или AI-агента. CLI использует публичный MCP API; для поиска вход и API-ключ не нужны.
+Поиск вакансий на [hireseeker.ru](https://hireseeker.ru) из терминала, IDE или AI-агента. CLI использует публичный API; для поиска вход и API-ключ не нужны.
 
 Версия `0.1.0` подготовлена к публикации. Пакет ещё не выпущен в npm: команды установки по имени заработают после публикации. Сейчас используйте tarball из GitHub Actions → **CLI acceptance** → **npm-package**.
 
