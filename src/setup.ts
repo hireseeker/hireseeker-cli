@@ -11,7 +11,8 @@ const MARKER = '.hireseeker-cli-install.json';
 export const AGENTS = ['claude', 'codex', 'cursor', 'opencode', 'gemini', 'antigravity'] as const;
 type AgentName = typeof AGENTS[number];
 type Target = { agent: AgentName; home: string; path: string };
-export type InstallResult = { agent: AgentName; path: string; status: 'installed' | 'skipped' | 'failed'; reason?: string };
+export type InstallResult = { agent: AgentName; path: string; status: 'installed' | 'skipped' | 'failed'; reason?: string; recovery_path?: string };
+export type SkillFileOperations = { rename: typeof rename; rm: typeof rm };
 export type SetupOptions = { env?: NodeJS.ProcessEnv; home?: string; packageRoot?: string; agents?: string[]; signal?: AbortSignal };
 
 export function setupReason(reason: string): string {
@@ -24,6 +25,8 @@ export function setupReason(reason: string): string {
     skill_permission_denied: 'нет прав на каталог skill', skill_not_directory: 'один из компонентов пути не является каталогом',
     skill_disk_full: 'на диске нет свободного места', skill_read_only: 'каталог находится на диске только для чтения',
     skill_missing_path: 'не найден файл или каталог для установки', skill_install_failed: 'не удалось установить skill',
+    skill_cleanup_pending: 'skill установлен; прежняя копия не удалена, проверьте её перед ручной очисткой',
+    skill_restore_failed: 'не удалось вернуть прежний skill; он сохранён по указанному резервному пути',
     skill_detection_failed: 'не удалось проверить каталог агента; проверьте путь и права на его чтение',
     installation_locked: 'каталог установки заблокирован другим запуском',
     existing_skill_modified_or_unowned: 'существующий skill сохранён: он изменён или установлен другим способом',
@@ -73,7 +76,8 @@ async function owned(path: string): Promise<boolean> {
   } catch { return false; }
 }
 
-async function installOne(target: Target, source: string): Promise<InstallResult> {
+async function installOne(target: Target, source: string, operations: SkillFileOperations): Promise<InstallResult> {
+  const { rename, rm } = operations;
   const parent = join(target.home, 'skills');
   const lock = join(parent, '.hireseeker-cli.lock');
   let locked = false;
@@ -96,8 +100,17 @@ async function installOne(target: Target, source: string): Promise<InstallResult
       await rename(target.path, backup);
     }
     try { await rename(staging, target.path); staging = undefined; }
-    catch (error) { if (backup) { await rename(backup, target.path); backup = undefined; } throw error; }
-    if (backup) { await rm(backup, { recursive: true }); backup = undefined; }
+    catch (error) {
+      if (backup) {
+        try { await rename(backup, target.path); backup = undefined; }
+        catch { return { agent: target.agent, path: target.path, status: 'failed', reason: 'skill_restore_failed', recovery_path: backup }; }
+      }
+      throw error;
+    }
+    if (backup) {
+      try { await rm(backup, { recursive: true }); backup = undefined; }
+      catch { return { agent: target.agent, path: target.path, status: 'installed', reason: 'skill_cleanup_pending', recovery_path: backup }; }
+    }
     return { agent: target.agent, path: target.path, status: 'installed' };
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code;
@@ -127,7 +140,7 @@ async function prepareSource(options: SetupOptions): Promise<string> {
   }
 }
 
-export async function installSkills(options: SetupOptions = {}): Promise<{ skill: string; agents: InstallResult[]; ok: boolean }> {
+async function installSkillsWithOperations(options: SetupOptions, operations: SkillFileOperations): Promise<{ skill: string; agents: InstallResult[]; ok: boolean }> {
   checkAgents(options.agents);
   const env = options.env ?? process.env;
   const source = await prepareSource(options);
@@ -143,10 +156,17 @@ export async function installSkills(options: SetupOptions = {}): Promise<{ skill
         continue;
       }
     }
-    results.push(await installOne(target, source));
+    results.push(await installOne(target, source, operations));
   }
   return { skill: 'hireseeker', agents: results, ok: results.length > 0 && results.every(result => result.status === 'installed') };
 }
+
+/** Инъекция файловых операций позволяет детерминированно проверить отказ замены и отката. */
+export function createSkillInstaller(operations: Partial<SkillFileOperations> = {}) {
+  const files = { rename, rm, ...operations };
+  return (options: SetupOptions = {}) => installSkillsWithOperations(options, files);
+}
+export const installSkills = createSkillInstaller();
 
 export async function initialize(options: SetupOptions = {}, runner: NpmRunner = installGlobal): Promise<Record<string, unknown>> {
   checkAgents(options.agents);

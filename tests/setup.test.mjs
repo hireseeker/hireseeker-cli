@@ -1,12 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, writeFile, rm, lstat, symlink, readdir, chmod } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, writeFile, rm, lstat, symlink, readdir, chmod, rename } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { load } from './runtime.mjs';
 import { invoke } from './helpers.mjs';
 import { writeNpmExecutable } from './npm-fixture.mjs';
-const { installSkills, initialize, targets, installGlobal } = await load('setup');
+const { installSkills, initialize, targets, installGlobal, createSkillInstaller } = await load('setup');
 const { VERSION } = await load('config');
 const { NpmInstallError } = await load('npm');
 
@@ -214,4 +214,61 @@ test('Недоступный HOME одного агента не маскиру�
     assert.equal(agents.find(item => item.agent === 'cursor').status, 'installed');
     assert.equal(JSON.parse(result.stderr).error.code, 'setup_incomplete');
   } finally { await chmod(blocked, 0o700); }
+});
+
+
+async function existingSkill(t) {
+  const options = { ...await context(t), agents: ['codex'] };
+  const initial = await installSkills(options); assert.equal(initial.ok, true);
+  const path = initial.agents[0].path;
+  const before = Object.fromEntries(await Promise.all((await readdir(path)).map(async name => [name, await readFile(join(path, name), 'utf8')])));
+  return { options, path, before, parent: join(options.home, '.codex', 'skills') };
+}
+
+function fsError(code) { return Object.assign(new Error('Управляемый отказ файловой операции'), { code }); }
+
+test('Отказ финального rename восстанавливает прежний skill и снимает lock', async t => {
+  const { options, path, before, parent } = await existingSkill(t);
+  let calls = 0;
+  const install = createSkillInstaller({ rename: async (...args) => {
+    if (++calls === 2) throw fsError('EACCES');
+    await rename(...args);
+  } });
+  const result = await install(options);
+  assert.equal(result.ok, false); assert.equal(result.agents[0].reason, 'skill_permission_denied');
+  assert.equal(calls, 3);
+  for (const [name, value] of Object.entries(before)) assert.equal(await readFile(join(path, name), 'utf8'), value);
+  assert.deepEqual(await readdir(parent), ['hireseeker']);
+});
+
+test('Отказ восстановления сохраняет backup и сообщает его путь для ручного восстановления', async t => {
+  const { options, path, before, parent } = await existingSkill(t);
+  let calls = 0;
+  const install = createSkillInstaller({ rename: async (...args) => {
+    if (++calls >= 2) throw fsError('EIO');
+    await rename(...args);
+  } });
+  const result = await install(options); const report = result.agents[0];
+  assert.equal(result.ok, false); assert.equal(report.reason, 'skill_restore_failed');
+  assert.equal(report.status, 'failed'); assert.ok(report.recovery_path.endsWith('-previous'));
+  await assert.rejects(lstat(path), { code: 'ENOENT' });
+  for (const [name, value] of Object.entries(before)) assert.equal(await readFile(join(report.recovery_path, name), 'utf8'), value);
+  assert.deepEqual(await readdir(parent), [report.recovery_path.split(/[\\/]/).at(-1)]);
+  await rename(report.recovery_path, path);
+  assert.deepEqual(await readdir(parent), ['hireseeker']);
+});
+
+test('Отказ очистки backup не превращает установленный новый skill в ошибку', async t => {
+  const { options, path, before, parent } = await existingSkill(t);
+  const packageRoot = join(options.home, 'new-package'); const source = join(packageRoot, 'skills', 'hireseeker');
+  await mkdir(source, { recursive: true }); await writeFile(join(source, 'SKILL.md'), 'Новая версия skill');
+  const install = createSkillInstaller({ rm: async (...args) => {
+    if (args[0].endsWith('-previous')) throw fsError('EPERM');
+    await rm(...args);
+  } });
+  const result = await install({ ...options, packageRoot }); const report = result.agents[0];
+  assert.equal(result.ok, true); assert.equal(report.status, 'installed'); assert.equal(report.reason, 'skill_cleanup_pending');
+  assert.equal(await readFile(join(path, 'SKILL.md'), 'utf8'), 'Новая версия skill');
+  for (const [name, value] of Object.entries(before)) assert.equal(await readFile(join(report.recovery_path, name), 'utf8'), value);
+  assert.deepEqual((await readdir(parent)).sort(), [report.recovery_path.split(/[\\/]/).at(-1), 'hireseeker'].sort());
 });

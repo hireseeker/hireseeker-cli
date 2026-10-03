@@ -10,13 +10,15 @@ export function salary(job: Job): string {
   return `${amounts.join(' ')} ${text(value.currency)}`;
 }
 
-export function renderJob(job: Job): string {
+export function renderJob(job: Job, context: 'search' | 'detail' = 'detail'): string {
   const lines = [
     `${job.id} · ${text(job.title)}`, `Работодатель: ${text(job.employer)}`,
     `Зарплата: ${salary(job)}`, `Формат: ${text(job.schedule)} · Место: ${text(job.location)}`,
     text(job.description),
   ];
-  if (job.description_truncated) lines.push(`Описание обрезано. Подробности: hireseeker vacancy read ${job.id}`);
+  if (job.description_truncated) lines.push(context === 'search'
+    ? `Описание обрезано. Подробности: hireseeker vacancy read ${job.id}`
+    : 'Описание ограничено сервисом. Откройте ссылку на вакансию для подробностей.');
   if (job.contact_access === 'restricted') lines.push('Доступ к контактам можно получить на сайте.');
   if (job.contact_access === 'unavailable') lines.push('Контакты не указаны.');
   lines.push(clean(job.open_url));
@@ -24,7 +26,7 @@ export function renderJob(job: Job): string {
 }
 
 export function renderPage(page: Page): string {
-  const result = page.vacancies.length ? page.vacancies.map(renderJob).join('\n\n') : 'На этой странице вакансий нет.';
+  const result = page.vacancies.length ? page.vacancies.map(job => renderJob(job, 'search')).join('\n\n') : 'На этой странице вакансий нет.';
   const lines = [result, '', `На странице: ${page.vacancies.length}. В снимке на ${text(page.searched_at)}: ${page.total_items}.`,
     `Применённые фильтры: ${JSON.stringify(page.applied_filters)}`];
   if (page.next_cursor) lines.push(`Следующая страница: hireseeker vacancy search --cursor "${clean(page.next_cursor)}"`);

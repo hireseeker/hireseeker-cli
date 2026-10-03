@@ -138,3 +138,37 @@ for (const args of [['vacancy', 'search', '--category', 'python_backend'], ['fil
     assert.equal(toolCalls(fixture, 'search_vacancies').length, 0);
   });
 }
+
+
+test('Обрезанная подробная карточка сообщает ограничение сервиса без повтора read', async t => {
+  const fixture = await server(({ name }) => name === 'get_vacancy' ? { content: [], structuredContent: { ...job, search_appeared_at: null, description_truncated: true } } : undefined);
+  t.after(() => fixture.close());
+  const result = await invoke(['vacancy', 'read', '101'], { url: fixture.url });
+  assert.equal(result.code, 0, result.stderr); assert.equal(result.stderr, '');
+  assert.match(result.stdout, /Описание ограничено сервисом/); assert.doesNotMatch(result.stdout, /hireseeker vacancy read/);
+  assert.match(result.stdout, /https:\/\/hireseeker.ru\/vacancy\/101/);
+});
+
+for (const field of ['url', 'open_url']) {
+  for (const unsafe of ['javascript:alert(1)', 'data:text/html,unsafe', 'file:///etc/passwd']) {
+    for (const command of [['vacancy', 'read', '101'], ['vacancy', 'search', '--cursor', cursor]]) {
+      test(`Опасная схема ${field} отклоняется в ${command[1]}: ${unsafe.split(':')[0]}`, async t => {
+        const bad = { ...job, [field]: unsafe };
+        const fixture = await server(({ name }) => name === 'get_vacancy' ? { content: [], structuredContent: bad }
+          : name === 'search_vacancies' ? { content: [], structuredContent: { ...page, vacancies: [bad] } } : undefined);
+        t.after(() => fixture.close());
+        const result = await invoke([...command, '--json'], { url: fixture.url });
+        assert.equal(result.code, 1); assert.equal(result.stdout, '');
+        assert.equal(JSON.parse(result.stderr).error.code, 'contract_error'); assert.ok(!result.stderr.includes(unsafe));
+      });
+    }
+  }
+}
+
+test('Обычная HTTP-ссылка источника сохраняется в JSON без изменения', async t => {
+  const value = { ...job, url: 'http://example.com/vacancy/101' };
+  const fixture = await server(({ name }) => name === 'get_vacancy' ? { content: [], structuredContent: value } : undefined);
+  t.after(() => fixture.close());
+  const result = await invoke(['vacancy', 'read', '101', '--json'], { url: fixture.url });
+  assert.equal(result.code, 0, result.stderr); assert.equal(JSON.parse(result.stdout).url, value.url);
+});
