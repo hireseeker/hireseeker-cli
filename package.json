@@ -1,7 +1,7 @@
 {
   "name": "hireseeker-cli",
-  "version": "0.1.0",
-  "description": "Поиск вакансий HireSeeker из терминала и AI-агентов",
+  "version": "0.1.1",
+  "description": "HireSeeker: поиск вакансий из Telegram-каналов и карьерных сайтов компаний. CLI/npx, JSON и skill для Codex, Claude Code и Cursor.",
   "license": "MIT",
   "type": "module",
   "bin": {
@@ -29,11 +29,30 @@
   },
   "keywords": [
     "hireseeker",
-    "cli",
-    "jobs",
     "job-search",
+    "jobs",
+    "vacancies",
+    "job-aggregator",
+    "telegram",
+    "telegram-jobs",
+    "telegram-channels",
+    "career-sites",
+    "careers",
+    "remote-jobs",
+    "it-jobs",
+    "russia",
+    "cli",
+    "npx",
     "ai-agent",
-    "mcp"
+    "agent-skills",
+    "codex",
+    "claude-code",
+    "cursor",
+    "mcp",
+    "вакансии",
+    "поиск-работы",
+    "телеграм",
+    "удаленная-работа"
   ],
   "scripts": {
     "build": "tsc",

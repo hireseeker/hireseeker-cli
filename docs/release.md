@@ -1,6 +1,6 @@
 # Подготовка и публикация
 
-Версия `0.1.0` подготовлена к выпуску. CI не публикует пакет автоматически.
+Версия `0.1.1` подготовлена к выпуску. CI не публикует пакет автоматически.
 
 1. Обновите версию в `package.json` и `npm-shrinkwrap.json`, если готовите следующий выпуск.
 2. Загрузите commit в GitHub и дождитесь зелёного **CLI acceptance** на точном SHA. CI собирает один tarball и проверяет его установку на Linux, macOS и Windows, Node.js 22 и 24.
@@ -19,25 +19,25 @@ npm run artifact:check -- "$RELEASE_PACKAGE_DIR" FULL_COMMIT_SHA
 
 ```bash
 RELEASE_CHECK_PREFIX=$(mktemp -d)
-npm install --prefix "$RELEASE_CHECK_PREFIX" --ignore-scripts --no-audit --no-fund "$RELEASE_PACKAGE_DIR/hireseeker-cli-0.1.0.tgz" &&
+npm install --prefix "$RELEASE_CHECK_PREFIX" --ignore-scripts --no-audit --no-fund "$RELEASE_PACKAGE_DIR/hireseeker-cli-0.1.1.tgz" &&
 node scripts/live-smoke.mjs "$RELEASE_CHECK_PREFIX/node_modules/hireseeker-cli/bin/hireseeker.js"
 ```
 
 Продолжайте только при коде завершения 0: smoke должен действительно прочитать следующую страницу. При недоступном API, отсутствии курсора или другой ошибке остановите выпуск; не подменяйте проверку локальным build или другим архивом. После проверки удалите созданный временный prefix. Для установки нового набора skills используйте временный HOME, сохраняя пользовательские файлы.
 
-5. После отдельного разрешения на публикацию выполните npm login в своём терминале. Не отправляйте токены в чат и не коммитьте `.npmrc` с credentials.
+5. После разрешения пользователя на публикацию выполните `npm login --auth-type=web --registry=https://registry.npmjs.org` в своём терминале. Для публикации с обычным входом в аккаунте должна быть включена 2FA: npm может запросить отдельное подтверждение в браузере. Подтвердите его своей 2FA; коды и токены не отправляйте в чат и не коммитьте `.npmrc` с credentials. [Настройка 2FA](https://docs.npmjs.com/configuring-two-factor-authentication/).
 6. Опубликуйте тот же проверенный tarball:
 
 ```bash
-npm publish "$RELEASE_PACKAGE_DIR/hireseeker-cli-0.1.0.tgz" --access public --ignore-scripts --registry=https://registry.npmjs.org
+npm publish "$RELEASE_PACKAGE_DIR/hireseeker-cli-0.1.1.tgz" --access public --ignore-scripts --registry=https://registry.npmjs.org
 ```
 
 7. Проверьте registry и команды из опубликованного пакета:
 
 ```bash
-npm view hireseeker-cli@0.1.0 version
-npx --yes hireseeker-cli@0.1.0 --version
-npx --yes hireseeker-cli@0.1.0 professions list --json
+npm view hireseeker-cli@0.1.1 version
+npx --yes hireseeker-cli@0.1.1 --version
+npx --yes hireseeker-cli@0.1.1 professions list --json
 ```
 
 Сверьте `dist.integrity` опубликованной версии с SHA-512 проверенного tarball. Опубликованная версия npm не перезаписывается. После подтверждённой публикации можно создать GitHub Release с тем же tarball и receipt.
@@ -54,4 +54,4 @@ npx skills add hireseeker/hireseeker-cli --skill hireseeker
 
 npm.io индексирует npm-пакеты; публикация выполняется в registry.npmjs.org. `npx` использует `bin` из опубликованного пакета и не требует отдельного размещения. Появление в поисковых каталогах может отставать от публикации в реестре.
 
-Для проверки без registry установите скачанный tarball через `npm install -g ./hireseeker-cli-0.1.0.tgz`. Команда `init` скачивает свою версию из npm, поэтому до первой публикации используйте ручную установку tarball и `hireseeker skill`.
+Для проверки без registry установите скачанный tarball через `npm install -g ./hireseeker-cli-0.1.1.tgz`. Команда `init` скачивает свою версию из npm, поэтому до первой публикации используйте ручную установку tarball и `hireseeker skill`.
