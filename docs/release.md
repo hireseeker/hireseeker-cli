@@ -29,7 +29,7 @@ node scripts/live-smoke.mjs "$RELEASE_CHECK_PREFIX/node_modules/hireseeker-cli/b
 6. Опубликуйте тот же проверенный tarball:
 
 ```bash
-npm publish "$RELEASE_PACKAGE_DIR/hireseeker-cli-0.1.0.tgz" --access public
+npm publish "$RELEASE_PACKAGE_DIR/hireseeker-cli-0.1.0.tgz" --access public --ignore-scripts --registry=https://registry.npmjs.org
 ```
 
 7. Проверьте registry и команды из опубликованного пакета:
@@ -40,6 +40,18 @@ npx --yes hireseeker-cli@0.1.0 --version
 npx --yes hireseeker-cli@0.1.0 professions list --json
 ```
 
-После подтверждённой публикации обновите в README статус и создайте GitHub Release с тем же tarball и receipt. Опубликованная версия npm не перезаписывается.
+Сверьте `dist.integrity` опубликованной версии с SHA-512 проверенного tarball. Опубликованная версия npm не перезаписывается. После подтверждённой публикации можно создать GitHub Release с тем же tarball и receipt.
+
+## Skill и каталоги
+
+Skill доступен из публичного GitHub-репозитория независимо от публикации CLI:
+
+```bash
+npx skills add hireseeker/hireseeker-cli --skill hireseeker
+```
+
+Проверьте установку в временном проекте и HOME: должны присутствовать `SKILL.md` и `reference.md`. Инструкции должны соответствовать опубликованной версии CLI. skills.sh обнаруживает репозиторий по телеметрии установок; отдельная загрузка в каталог не нужна. Не создавайте повторные установки ради счётчика. Если телеметрия отключена, установка не способствует появлению в каталоге.
+
+npm.io индексирует npm-пакеты; публикация выполняется в registry.npmjs.org. `npx` использует `bin` из опубликованного пакета и не требует отдельного размещения. Появление в поисковых каталогах может отставать от публикации в реестре.
 
 Для проверки без registry установите скачанный tarball через `npm install -g ./hireseeker-cli-0.1.0.tgz`. Команда `init` скачивает свою версию из npm, поэтому до первой публикации используйте ручную установку tarball и `hireseeker skill`.

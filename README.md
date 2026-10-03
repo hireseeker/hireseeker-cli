@@ -2,27 +2,26 @@
 
 Поиск вакансий на [hireseeker.ru](https://hireseeker.ru) из терминала, IDE или AI-агента. CLI использует публичный API; для поиска вход и API-ключ не нужны.
 
-Версия `0.1.0` подготовлена к публикации. Пакет ещё не выпущен в npm: команды установки по имени заработают после публикации. Сейчас используйте tarball из GitHub Actions → **CLI acceptance** → **npm-package**.
-
-## Установка подготовленного пакета
+## Установка
 
 Требуется Node.js ≥22.12. CLI работает на Linux, macOS и Windows.
 
 ```bash
-npm install -g ./hireseeker-cli-0.1.0.tgz
+npm install -g hireseeker-cli
 hireseeker --version
 hireseeker professions list
 ```
 
-После публикации станут доступны:
+Без глобальной установки:
 
 ```bash
-npm install -g hireseeker-cli
-npx --yes hireseeker-cli vacancy search --category python_backend --json
-npx --yes hireseeker-cli init
+npx --yes hireseeker-cli@0.1.0 vacancy search --category python_backend --json
+npx --yes hireseeker-cli@0.1.0 init
 ```
 
-`init` устанавливает глобально ту же версию, которая выполняет команду, и инструкции для обнаруженных агентов. До выпуска версии в npm установите tarball вручную и запустите `hireseeker skill`. Поисковые команды не требуют установки skills или запуска `init`.
+`init` устанавливает глобально ту же версию, которая выполняет команду, и инструкции для обнаруженных агентов. Поисковые команды не требуют установки skills или запуска `init`.
+
+Версию в реестре можно проверить командой `npm view hireseeker-cli version`. Если выпуск ещё не появился в npm, скачайте tarball из GitHub Actions → **CLI acceptance** → **npm-package** и установите его через `npm install -g ./hireseeker-cli-0.1.0.tgz`. Для установки инструкций из tarball используйте `hireseeker skill`.
 
 ## Быстрый старт
 
@@ -77,7 +76,25 @@ hireseeker skill --agent codex,cursor
 
 Skills копируются из установленного пакета и сохраняются после удаления кеша `npx`. Повторная установка обновляет собственный неизменённый skill. Чужие или отредактированные файлы сохраняются; команда сообщает о пропуске и возвращает ненулевой код. Для обновления skills после обновления CLI повторите `hireseeker skill`.
 
-Инструкции также доступны в [skills/hireseeker](skills/hireseeker/SKILL.md).
+### Установка через skills.sh
+
+Установить только skill из публичного GitHub-репозитория:
+
+```bash
+npx skills add hireseeker/hireseeker-cli --skill hireseeker
+```
+
+Для Codex и Cursor без интерактивного выбора:
+
+```bash
+npx skills add hireseeker/hireseeker-cli --skill hireseeker --agent codex cursor --yes
+```
+
+По умолчанию skill устанавливается в текущий проект; `--global` устанавливает его для пользователя. Этот способ использует установщик `skills`. Команда `hireseeker skill` устанавливает инструкции из версии npm-пакета и применяет описанную выше защиту пользовательских файлов. Выберите один способ установки для каждого агента.
+
+Skill запускает `hireseeker`, если CLI установлен глобально, или `npx --yes hireseeker-cli@0.1.0`. Установка самого skill не требует глобальной установки CLI.
+
+[Каталог skills.sh](https://skills.sh/hireseeker/hireseeker-cli) · [Исходный skill](skills/hireseeker/SKILL.md)
 
 ## Разработка и выпуск
 
