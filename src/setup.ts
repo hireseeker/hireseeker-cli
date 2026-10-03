@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { cp, lstat, mkdir, mkdtemp, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises';
+import { cp, lstat, mkdir, mkdtemp, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { CliError } from './errors.js';
@@ -24,6 +24,7 @@ export function setupReason(reason: string): string {
     skill_permission_denied: 'нет прав на каталог skill', skill_not_directory: 'один из компонентов пути не является каталогом',
     skill_disk_full: 'на диске нет свободного места', skill_read_only: 'каталог находится на диске только для чтения',
     skill_missing_path: 'не найден файл или каталог для установки', skill_install_failed: 'не удалось установить skill',
+    skill_detection_failed: 'не удалось проверить каталог агента; проверьте путь и права на его чтение',
     installation_locked: 'каталог установки заблокирован другим запуском',
     existing_skill_modified_or_unowned: 'существующий skill сохранён: он изменён или установлен другим способом',
   };
@@ -130,13 +131,18 @@ export async function installSkills(options: SetupOptions = {}): Promise<{ skill
   checkAgents(options.agents);
   const env = options.env ?? process.env;
   const source = await prepareSource(options);
-  const detected: Target[] = [];
-  for (const target of targets(env, options.home ?? homedir())) {
-    if (options.agents ? options.agents.includes(target.agent) : await exists(target.home)) detected.push(target);
-  }
   const results: InstallResult[] = [];
-  for (const target of detected) {
+  for (const target of targets(env, options.home ?? homedir())) {
+    if (options.agents && !options.agents.includes(target.agent)) continue;
     if (options.signal?.aborted) throw new CliError('cancelled', 'Установка отменена.', options.signal.reason === 143 ? 143 : 130);
+    if (!options.agents) {
+      try { if (!(await stat(target.home)).isDirectory()) continue; }
+      catch (error) {
+        const code = (error as NodeJS.ErrnoException).code;
+        if (code !== 'ENOENT' && code !== 'ENOTDIR') results.push({ agent: target.agent, path: target.path, status: 'failed', reason: 'skill_detection_failed' });
+        continue;
+      }
+    }
     results.push(await installOne(target, source));
   }
   return { skill: 'hireseeker', agents: results, ok: results.length > 0 && results.every(result => result.status === 'installed') };

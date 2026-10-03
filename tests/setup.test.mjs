@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, readFile, writeFile, rm, lstat, symlink, readdir } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, writeFile, rm, lstat, symlink, readdir, chmod } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { load } from './runtime.mjs';
@@ -189,3 +189,29 @@ for (const kind of ['missing', 'directory', 'empty', 'symlink']) {
     });
   }
 }
+
+
+test('Autodetect пропускает файлы вместо каталогов и устанавливает доступным агентам', async t => {
+  const options = await context(t);
+  await mkdir(join(options.home, '.codex')); await writeFile(join(options.home, '.gemini'), 'Не каталог');
+  const result = await invoke(['skill', '--json'], options);
+  assert.equal(result.code, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout).agents.map(item => item.agent), ['codex']);
+});
+
+test('Недоступный HOME одного агента не маскируется сетью и не мешает остальным', {
+  skip: process.platform === 'win32' || process.getuid?.() === 0,
+}, async t => {
+  const options = await context(t);
+  await mkdir(join(options.home, '.cursor'));
+  const blocked = join(options.home, 'blocked'); const codex = join(blocked, 'codex');
+  await mkdir(codex, { recursive: true }); await chmod(blocked, 0);
+  try {
+    const result = await invoke(['skill', '--json'], { ...options, env: { CODEX_HOME: codex } });
+    assert.equal(result.code, 1); assert.ok(result.stdout, result.stderr);
+    const agents = JSON.parse(result.stdout).agents;
+    assert.equal(agents.find(item => item.agent === 'codex').reason, 'skill_detection_failed');
+    assert.equal(agents.find(item => item.agent === 'cursor').status, 'installed');
+    assert.equal(JSON.parse(result.stderr).error.code, 'setup_incomplete');
+  } finally { await chmod(blocked, 0o700); }
+});
