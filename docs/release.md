@@ -9,19 +9,30 @@
 Из checkout репозитория проверьте скачанный артефакт лёгкой командой. Вместо `FULL_COMMIT_SHA` укажите полный SHA зелёного CI; каталог содержит tarball и `receipt.json`:
 
 ```bash
-npm run artifact:check -- /path/to/npm-package FULL_COMMIT_SHA
+RELEASE_PACKAGE_DIR=/path/to/npm-package
+npm run artifact:check -- "$RELEASE_PACKAGE_DIR" FULL_COMMIT_SHA
 ```
 
 Она проверяет имя пакета и tarball, версию, commit и SHA256 без установки, build или запуска пакета. Команда возвращает ненулевой код при несовпадении; установку или публикацию тогда не продолжайте. Receipt должен поступить из того же проверенного CI, что и tarball.
 
-4. После отдельного разрешения на публикацию выполните npm login в своём терминале. Не отправляйте токены в чат и не коммитьте `.npmrc` с credentials.
-5. Опубликуйте проверенный tarball:
+4. Установите **этот же проверенный tarball** в отдельный prefix и выполните обязательный production smoke. Из корня checkout, заменив путь к архиву:
 
 ```bash
-npm publish ./hireseeker-cli-0.1.0.tgz --access public
+RELEASE_CHECK_PREFIX=$(mktemp -d)
+npm install --prefix "$RELEASE_CHECK_PREFIX" --ignore-scripts --no-audit --no-fund "$RELEASE_PACKAGE_DIR/hireseeker-cli-0.1.0.tgz" &&
+node scripts/live-smoke.mjs "$RELEASE_CHECK_PREFIX/node_modules/hireseeker-cli/bin/hireseeker.js"
 ```
 
-6. Проверьте registry и команды из опубликованного пакета:
+Продолжайте только при коде завершения 0: smoke должен действительно прочитать следующую страницу. При недоступном API, отсутствии курсора или другой ошибке остановите выпуск; не подменяйте проверку локальным build или другим архивом. После проверки удалите созданный временный prefix. Для установки нового набора skills используйте временный HOME, сохраняя пользовательские файлы.
+
+5. После отдельного разрешения на публикацию выполните npm login в своём терминале. Не отправляйте токены в чат и не коммитьте `.npmrc` с credentials.
+6. Опубликуйте тот же проверенный tarball:
+
+```bash
+npm publish "$RELEASE_PACKAGE_DIR/hireseeker-cli-0.1.0.tgz" --access public
+```
+
+7. Проверьте registry и команды из опубликованного пакета:
 
 ```bash
 npm view hireseeker-cli@0.1.0 version

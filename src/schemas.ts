@@ -1,5 +1,10 @@
 import { z } from 'zod';
 
+// Ссылки вакансий открываются пользователем или агентом: разрешены только веб-схемы.
+const webUrl = z.string().url().refine(value => {
+  try { return ['http:', 'https:'].includes(new URL(value).protocol); }
+  catch { return false; }
+});
 const option = z.looseObject({ code: z.string(), name_ru: z.string() });
 export const catalogSchema = z.looseObject({
   groups: z.array(option.extend({ members: z.array(option) })),
@@ -20,7 +25,7 @@ export const jobSchema = z.looseObject({
   schedule: z.string().nullable(), location: z.string().nullable(), countries: z.array(z.string()),
   description: z.string(), description_truncated: z.boolean(), profession_codes: z.array(z.string()),
   published_at: z.string().nullable(), seen_at: z.string().nullable(), search_appeared_at: z.string().nullable(),
-  auto_bumped: z.boolean(), url: z.string().url(), open_url: z.string().url(),
+  auto_bumped: z.boolean(), url: webUrl, open_url: webUrl,
   contact_access: z.enum(['available', 'restricted', 'unavailable']),
 });
 export const pageSchema = z.looseObject({
