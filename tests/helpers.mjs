@@ -65,6 +65,10 @@ export async function server(handler, advertisedTools = tools, protocolVersion) 
         else if (name === 'get_vacancy') result = response({ ...job, search_appeared_at: null, description_truncated: false });
         else if (name === 'search_vacancies') result = response(args.cursor ? { ...page, vacancies: [{ ...job, id: 102 }], next_cursor: null } : { ...page, applied_filters: args.criteria });
       }
+    } else {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ jsonrpc: '2.0', id: message.id, error: { code: -32601, message: 'Method not found' } }));
+      return;
     }
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ jsonrpc: '2.0', id: message.id, result }));

@@ -54,3 +54,17 @@ test('Исполняемая команда обрабатывает насто�
   child.kill('SIGTERM');
   assert.equal(await exited, 143); assert.equal(stdout, ''); assert.equal(JSON.parse(stderr).error.code, 'cancelled');
 });
+
+test('Неизвестный MCP probe получает Method not found и сохраняет legacy-поиск', async t => {
+  const fixture = await server(undefined, undefined, '2025-03-26');
+  t.after(() => fixture.close());
+  const response = await fetch(fixture.url, { method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 42, method: 'server/discover', params: {} }),
+  });
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { jsonrpc: '2.0', id: 42, error: { code: -32601, message: 'Method not found' } });
+  const result = await invoke(['professions', 'list', '--json'], { url: fixture.url });
+  assert.equal(result.code, 0, result.stderr);
+  assert.equal(JSON.parse(result.stdout).groups[0].code, 'backend');
+});
