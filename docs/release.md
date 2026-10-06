@@ -1,9 +1,9 @@
 # Подготовка и публикация
 
-Версия `0.1.1` подготовлена к выпуску. CI не публикует пакет автоматически.
+Версия `0.1.2` подготовлена к выпуску. CI не публикует пакет автоматически.
 
 1. Обновите версию в `package.json` и `npm-shrinkwrap.json`, если готовите следующий выпуск.
-2. Загрузите commit в GitHub и дождитесь зелёного **CLI acceptance** на точном SHA. CI собирает один tarball и проверяет его установку на Linux, macOS и Windows, Node.js 22 и 24.
+2. Загрузите commit в GitHub и дождитесь зелёного **CLI acceptance** на точном SHA. CI собирает один tarball и проверяет его установку на Linux, macOS и Windows, Node.js 22 и 24. Отдельный job проверяет установку bundle и выполнение MCP-инструментов через настоящий Harness на Node.js 24 без вызовов модели.
 3. Скачайте артефакт **npm-package**. В нём находятся `hireseeker-cli-VERSION.tgz` и `receipt.json` с SHA commit и SHA-256 tarball. Сверьте хеш. Production smoke должен проходить этим же артефактом.
 
 Из checkout репозитория проверьте скачанный артефакт лёгкой командой. Вместо `FULL_COMMIT_SHA` укажите полный SHA зелёного CI; каталог содержит tarball и `receipt.json`:
@@ -19,7 +19,7 @@ npm run artifact:check -- "$RELEASE_PACKAGE_DIR" FULL_COMMIT_SHA
 
 ```bash
 RELEASE_CHECK_PREFIX=$(mktemp -d)
-npm install --prefix "$RELEASE_CHECK_PREFIX" --ignore-scripts --no-audit --no-fund "$RELEASE_PACKAGE_DIR/hireseeker-cli-0.1.1.tgz" &&
+npm install --prefix "$RELEASE_CHECK_PREFIX" --ignore-scripts --no-audit --no-fund "$RELEASE_PACKAGE_DIR/hireseeker-cli-0.1.2.tgz" &&
 node scripts/live-smoke.mjs "$RELEASE_CHECK_PREFIX/node_modules/hireseeker-cli/bin/hireseeker.js"
 ```
 
@@ -29,15 +29,15 @@ node scripts/live-smoke.mjs "$RELEASE_CHECK_PREFIX/node_modules/hireseeker-cli/b
 6. Опубликуйте тот же проверенный tarball:
 
 ```bash
-npm publish "$RELEASE_PACKAGE_DIR/hireseeker-cli-0.1.1.tgz" --access public --ignore-scripts --registry=https://registry.npmjs.org
+npm publish "$RELEASE_PACKAGE_DIR/hireseeker-cli-0.1.2.tgz" --access public --ignore-scripts --registry=https://registry.npmjs.org
 ```
 
 7. Проверьте registry и команды из опубликованного пакета:
 
 ```bash
-npm view hireseeker-cli@0.1.1 version
-npx --yes hireseeker-cli@0.1.1 --version
-npx --yes hireseeker-cli@0.1.1 professions list --json
+npm view hireseeker-cli@0.1.2 version
+npx --yes hireseeker-cli@0.1.2 --version
+npx --yes hireseeker-cli@0.1.2 professions list --json
 ```
 
 Сверьте `dist.integrity` опубликованной версии с SHA-512 проверенного tarball. Опубликованная версия npm не перезаписывается. После подтверждённой публикации можно создать GitHub Release с тем же tarball и receipt.
@@ -54,4 +54,10 @@ npx skills add hireseeker/hireseeker-cli --skill hireseeker
 
 npm.io индексирует npm-пакеты; публикация выполняется в registry.npmjs.org. `npx` использует `bin` из опубликованного пакета и не требует отдельного размещения. Появление в поисковых каталогах может отставать от публикации в реестре.
 
-Для проверки без registry установите скачанный tarball через `npm install -g ./hireseeker-cli-0.1.1.tgz`. Команда `init` скачивает свою версию из npm, поэтому до первой публикации используйте ручную установку tarball и `hireseeker skill`.
+Для проверки без registry установите скачанный tarball через `npm install -g ./hireseeker-cli-0.1.2.tgz`. Команда `init` скачивает свою версию из npm, поэтому до первой публикации используйте ручную установку tarball и `hireseeker skill`.
+
+## Плагин DeepSeek Harness
+
+Пакет содержит `dsh.bundle` и `deepseek/cordis.patch.yml`; отдельный сервер не нужен. Job **deepseek** устанавливает тот же CI-tarball в чистый профиль Harness `0.2.0-rc.2`, проверяет конфигурацию и четыре инструмента через его MCP-клиент и ToolRuntime. Ошибки поиска, истёкший курсор и недоступный сервер проверяются без LLM/API-кредитов.
+
+После выпуска установите опубликованную версию через **Plugins → Add plugin** или команду из [инструкции](deepseek.md). Добавьте публичному GitHub-репозиторию метку `dsh-plugin`, сохранив существующие topics, и проверьте появление в [Community plugins](https://github.com/topics/dsh-plugin). Публикация npm, установка и индексация каталога — разные проверки; не объявляйте индексацию завершённой только по успешной публикации.

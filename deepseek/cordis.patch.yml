@@ -1,0 +1,7 @@
+- insert:
+    - id: mcp-hireseeker
+      name: '@deepseek-ai/dsh-mcp-client'
+      config:
+        serverName: hireseeker
+        transport: streamable-http
+        url: https://hireseeker.ru/mcp
