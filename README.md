@@ -32,13 +32,13 @@ hireseeker professions list
 Без глобальной установки:
 
 ```bash
-npx --yes hireseeker-cli@0.1.1 vacancy search --category python_backend --json
-npx --yes hireseeker-cli@0.1.1 init
+npx --yes hireseeker-cli@0.1.2 vacancy search --category python_backend --json
+npx --yes hireseeker-cli@0.1.2 init
 ```
 
 `init` устанавливает глобально ту же версию, которая выполняет команду, и инструкции для обнаруженных агентов. Поисковые команды не требуют установки skills или запуска `init`.
 
-Версию в реестре можно проверить командой `npm view hireseeker-cli version`. Если выпуск ещё не появился в npm, скачайте tarball из GitHub Actions → **CLI acceptance** → **npm-package** и установите его через `npm install -g ./hireseeker-cli-0.1.1.tgz`. Для установки инструкций из tarball используйте `hireseeker skill`.
+Версию в реестре можно проверить командой `npm view hireseeker-cli version`. Если выпуск ещё не появился в npm, скачайте tarball из GitHub Actions → **CLI acceptance** → **npm-package** и установите его через `npm install -g ./hireseeker-cli-0.1.2.tgz`. Для установки инструкций из tarball используйте `hireseeker skill`.
 
 ## Быстрый старт
 
@@ -56,7 +56,7 @@ CLI показывает краткое описание. Если оно обр
 ## Что возвращает поиск
 
 ```bash
-npx --yes hireseeker-cli@0.1.1 vacancy search --category python_backend --schedule remote --limit 2 --json
+npx --yes hireseeker-cli@0.1.2 vacancy search --category python_backend --schedule remote --limit 2 --json
 ```
 
 Ниже фрагмент одной карточки из реального ответа API от 3 октября 2026 года. Пример показывает часть полей из массива `vacancies`; вакансия может быть снята или изменена:
@@ -115,6 +115,21 @@ hireseeker vacancy search --cursor "CURSOR_ИЗ_ОТВЕТА" --json
 
 Ошибки идут в stderr. С `--json` они тоже имеют JSON-формат. Подробности и коды завершения — в [справочнике](docs/commands.md).
 
+## DeepSeek Harness
+
+Пакет также устанавливается как плагин [DeepSeek Harness](https://www.deepseek.com/en/harness/). Он подключает публичный MCP HireSeeker напрямую: поиск вакансий и подробности доступны в чате Harness без входа в HireSeeker.
+
+В Harness откройте **Plugins → Add plugin**, укажите `hireseeker-cli@0.1.2`, установите пакет и выберите **Enable now**. Для установки из терминала:
+
+```bash
+npx --yes @deepseek-ai/dsh@0.2.0-rc.2 plugin --profile web add hireseeker-cli@0.1.2
+npx --yes @deepseek-ai/dsh@0.2.0-rc.2 web
+```
+
+Плагин использует доступ к модели, настроенный пользователем в Harness. [Инструкция и примеры запросов](docs/deepseek.md) объясняют подключение, ограничения и отдельный сценарий для обычного чата DeepSeek.
+
+[Community plugins DeepSeek Harness](https://github.com/topics/dsh-plugin) — публичный список репозиториев по ссылке с официального сайта DeepSeek. Установка плагина Harness не добавляет инструменты в `chat.deepseek.com`.
+
 ## AI-агенты
 
 ```bash
@@ -142,7 +157,7 @@ npx skills add hireseeker/hireseeker-cli --skill hireseeker --agent codex cursor
 
 По умолчанию skill устанавливается в текущий проект; `--global` устанавливает его для пользователя. Этот способ использует установщик `skills`. Команда `hireseeker skill` устанавливает инструкции из версии npm-пакета и применяет описанную выше защиту пользовательских файлов. Выберите один способ установки для каждого агента.
 
-Skill запускает `hireseeker`, если CLI установлен глобально, или `npx --yes hireseeker-cli@0.1.1`. Установка самого skill не требует глобальной установки CLI.
+Skill запускает `hireseeker`, если CLI установлен глобально, или `npx --yes hireseeker-cli@0.1.2`. Установка самого skill не требует глобальной установки CLI.
 
 [Каталог skills.sh](https://skills.sh/hireseeker/hireseeker-cli) · [Исходный skill](skills/hireseeker/SKILL.md)
 

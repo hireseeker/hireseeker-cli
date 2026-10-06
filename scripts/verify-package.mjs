@@ -29,6 +29,10 @@ try {
   const exec = execute('npm', ['exec', '--offline', '--prefix', temp, '--', 'hireseeker', '--version'], offline);
   assert.equal(exec.status, 0, exec.stderr); assert.equal(exec.stdout.trim(), receipt.version);
   assert.ok(existsSync(join(packageRoot, 'npm-shrinkwrap.json')));
+  const manifest = JSON.parse(readFileSync(join(packageRoot, 'package.json'), 'utf8'));
+  assert.equal(manifest.dsh.bundle.patch, './deepseek/cordis.patch.yml');
+  assert.ok(existsSync(join(packageRoot, manifest.dsh.bundle.patch)));
+  assert.ok(existsSync(join(packageRoot, 'docs', 'deepseek.md')));
   const home = join(temp, 'home');
   const env = { ...offline, HOME: home, USERPROFILE: home, CODEX_HOME: join(home, '.codex'), CLAUDE_CONFIG_DIR: join(home, '.claude'), XDG_CONFIG_HOME: join(home, '.config') };
   const skill = execute(shim, ['skill', '--agent', 'codex', '--json'], env);

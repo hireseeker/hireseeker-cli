@@ -10,7 +10,7 @@ mkdirSync(artifacts, { recursive: true });
 const packed = spawn.sync('npm', ['pack', '--ignore-scripts', '--json', '--pack-destination', artifacts], { cwd: root, encoding: 'utf8' });
 if (packed.error || packed.status !== 0) throw new Error('Не удалось подготовить npm-tarball.');
 const [result] = JSON.parse(packed.stdout);
-for (const required of ['npm-shrinkwrap.json', 'bin/hireseeker.js', 'dist/cli.js', 'skills/hireseeker/SKILL.md']) {
+for (const required of ['npm-shrinkwrap.json', 'bin/hireseeker.js', 'dist/cli.js', 'skills/hireseeker/SKILL.md', 'deepseek/cordis.patch.yml', 'docs/deepseek.md']) {
   if (!result.files.some(file => file.path === required)) throw new Error(`npm-tarball не содержит ${required}.`);
 }
 const head = spawn.sync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' });

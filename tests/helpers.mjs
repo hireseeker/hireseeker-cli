@@ -41,7 +41,7 @@ export const tools = ['get_professions', 'search_locations', 'search_vacancies',
 }));
 const response = value => ({ content: [{ type: 'text', text: JSON.stringify(value) }], structuredContent: value });
 
-export async function server(handler, advertisedTools = tools) {
+export async function server(handler, advertisedTools = tools, protocolVersion) {
   const calls = [];
   const http = createServer(async (req, res) => {
     if (req.method !== 'POST') { res.writeHead(405); res.end(); return; }
@@ -51,7 +51,7 @@ export async function server(handler, advertisedTools = tools) {
     calls.push(message);
     if (message.id === undefined) { res.writeHead(202); res.end(); return; }
     let result;
-    if (message.method === 'initialize') result = { protocolVersion: message.params.protocolVersion, capabilities: { tools: {} }, serverInfo: { name: 'fixture', version: '1.0.0' } };
+    if (message.method === 'initialize') result = { protocolVersion: protocolVersion ?? message.params.protocolVersion, capabilities: { tools: {} }, serverInfo: { name: 'fixture', version: '1.0.0' } };
     else if (message.method === 'tools/list') result = { tools: advertisedTools };
     else if (message.method === 'tools/call') {
       const custom = handler ? await handler(message.params) : undefined;
@@ -65,6 +65,10 @@ export async function server(handler, advertisedTools = tools) {
         else if (name === 'get_vacancy') result = response({ ...job, search_appeared_at: null, description_truncated: false });
         else if (name === 'search_vacancies') result = response(args.cursor ? { ...page, vacancies: [{ ...job, id: 102 }], next_cursor: null } : { ...page, applied_filters: args.criteria });
       }
+    } else {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ jsonrpc: '2.0', id: message.id, error: { code: -32601, message: 'Method not found' } }));
+      return;
     }
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ jsonrpc: '2.0', id: message.id, result }));

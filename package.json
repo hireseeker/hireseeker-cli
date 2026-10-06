@@ -1,7 +1,7 @@
 {
   "name": "hireseeker-cli",
-  "version": "0.1.1",
-  "description": "HireSeeker: поиск вакансий из Telegram-каналов и карьерных сайтов компаний. CLI/npx, JSON и skill для Codex, Claude Code и Cursor.",
+  "version": "0.1.2",
+  "description": "HireSeeker: поиск вакансий из Telegram-каналов и карьерных сайтов компаний. CLI/npx, JSON, skills для AI-агентов и плагин DeepSeek Harness.",
   "license": "MIT",
   "type": "module",
   "bin": {
@@ -14,6 +14,7 @@
     "bin/",
     "dist/",
     "skills/",
+    "deepseek/",
     "README.md",
     "docs/",
     "LICENSE",
@@ -52,7 +53,11 @@
     "вакансии",
     "поиск-работы",
     "телеграм",
-    "удаленная-работа"
+    "удаленная-работа",
+    "deepseek",
+    "deepseek-harness",
+    "dsh-plugin",
+    "dsh-bundle"
   ],
   "scripts": {
     "build": "tsc",
@@ -65,7 +70,8 @@
     "test:package": "node scripts/verify-package.mjs",
     "smoke:live": "node scripts/live-smoke.mjs",
     "syntax": "node scripts/check-syntax.mjs",
-    "artifact:check": "node scripts/check-artifact.mjs"
+    "artifact:check": "node scripts/check-artifact.mjs",
+    "test:deepseek": "node scripts/verify-deepseek.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.32.0",
@@ -80,5 +86,10 @@
     "eslint": "10.12.0",
     "typescript": "5.9.3",
     "typescript-eslint": "8.71.0"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./deepseek/cordis.patch.yml"
+    }
   }
 }
