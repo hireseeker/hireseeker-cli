@@ -1,3 +1,4 @@
+
 - insert:
     - id: mcp-hireseeker
       name: '@deepseek-ai/dsh-mcp-client'

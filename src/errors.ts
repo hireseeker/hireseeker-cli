@@ -1,3 +1,4 @@
+
 /* eslint-disable no-control-regex -- Очистка управляющих символов терминала. */
 import { CommanderError } from 'commander';
 

@@ -1,3 +1,4 @@
+
 # HireSeeker в DeepSeek
 
 ## Плагин для DeepSeek Harness
