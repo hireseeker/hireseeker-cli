@@ -4,7 +4,6 @@ import { tmpdir } from 'node:os';
 import { delimiter, join, resolve } from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { setTimeout as delay } from 'node:timers/promises';
 import spawn from 'cross-spawn';
 import { checkArtifact } from './check-artifact.mjs';
 
@@ -71,18 +70,18 @@ try {
   const ctx = new Context();
   const errors = [];
   ctx.on('internal/error', error => { errors.push(String(error)); });
-  ctx.plugin(SystemPrompt, {});
-  ctx.plugin(ToolRuntime, { mode: 'native' });
-  ctx.plugin(mcpClient, { ...entry.config, url: fixture.url, failOnStartupError: true, reconnect: { enabled: false } });
+  const promptFiber = ctx.plugin(SystemPrompt, {});
+  const toolsFiber = ctx.plugin(ToolRuntime, { mode: 'native' });
+  const mcpFiber = ctx.plugin(mcpClient, { ...entry.config, url: fixture.url, failOnStartupError: true, reconnect: { enabled: false } });
   let callId = 0;
   const call = (name, args = {}) => ctx.tools.execute({
     callId: `hireseeker-check-${++callId}`, name: `mcp__hireseeker__${name}`,
     arguments: args, signal: AbortSignal.timeout(10000),
   });
   try {
-    await ctx.start();
-    const deadline = Date.now() + 10000;
-    while ((!ctx.tools || ctx.tools.schemas().length < 4) && Date.now() < deadline) await delay(20);
+    await promptFiber.await();
+    await toolsFiber.await();
+    await mcpFiber.await();
     const names = ctx.tools.schemas().map(tool => tool.name).sort();
     assert.deepEqual(names, ['get_professions', 'search_locations', 'search_vacancies', 'get_vacancy']
       .map(name => `mcp__hireseeker__${name}`).sort(), errors.join('\n'));
@@ -113,8 +112,7 @@ try {
     console.log(JSON.stringify({ package: manifest.name, version: receipt.version, harness: harnessManifest.version,
       commit: receipt.commit, tools: names, pagination_checked: true, failure_paths_checked: true, model_calls: 0 }));
   } finally {
-    await ctx.stop();
-    await fixture.close();
+    try { await ctx.fiber.dispose(); } finally { await fixture.close(); }
   }
   execute(['plugin', '--profile', 'hireseeker-check', 'remove', 'hireseeker-cli']);
   const after = JSON.parse(readFileSync(join(profileRoot, 'package.json'), 'utf8'));
